@@ -1,7 +1,8 @@
 """
-CISIS v3.16.0 — Views для журнала аудита.
+CISIS v3.18.0 — Views для журнала аудита.
 
 Файл: core/views/audit_views.py
+Действие: ПОЛНАЯ ЗАМЕНА
 
 Содержит:
 - audit_log_view: страница журнала аудита с фильтрами и пагинацией
@@ -9,13 +10,15 @@ CISIS v3.16.0 — Views для журнала аудита.
 - _resolve_value_display: человекочитаемое значение (статусы, FK, даты, bool)
 
 ⭐ v3.16.0: Человекочитаемые значения в столбцах «Поле», «Было», «Стало»
+⭐ v3.18.0: Доступ через PermissionChecker (убран хардкод AUDIT_ALLOWED_ROLES)
 """
 
 import re
 from datetime import datetime
 
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q
 
@@ -24,15 +27,10 @@ from core.models import (
     SampleStatus, WorkshopStatus, ReportType, FurtherMovement,
     Laboratory, Client, Contract, Standard, AccreditationArea, Equipment,
 )
+from core.permissions import PermissionChecker
 
 
 AUDIT_ITEMS_PER_PAGE = 50
-
-# Роли, которым доступен глобальный журнал аудита
-AUDIT_ALLOWED_ROLES = (
-    'SYSADMIN', 'QMS_HEAD', 'QMS_ADMIN', 'CTO', 'CEO',
-    'CLIENT_DEPT_HEAD', 'LAB_HEAD', 'WORKSHOP_HEAD',
-)
 
 # Человекочитаемые названия типов сущностей
 ENTITY_TYPE_LABELS = {
@@ -251,11 +249,7 @@ def _format_datetime(value_str):
     if not value_str:
         return value_str
     try:
-        # Убираем микросекунды и таймзону для парсинга
         clean = value_str.strip()
-        # Формат: 2026-02-21 16:55:17.513086+00:00
-        # или:    2026-02-21T19:55:00+03:00
-        # или:    2026-02-21 19:55:00+03:00
         for fmt in (
             '%Y-%m-%dT%H:%M:%S%z',
             '%Y-%m-%dT%H:%M:%S.%f%z',
@@ -274,7 +268,6 @@ def _format_datetime(value_str):
         # Fallback: попробовать отрезать до минут
         if 'T' in clean or ' ' in clean:
             parts = clean.replace('T', ' ').split('+')[0].split('-0')[0]
-            # Берём первые 16 символов: YYYY-MM-DD HH:MM
             if len(parts) >= 16:
                 dt = datetime.strptime(parts[:16], '%Y-%m-%d %H:%M')
                 return dt.strftime('%d.%m.%Y %H:%M')
@@ -332,7 +325,6 @@ def _resolve_value(field_code, raw_value):
 
     # --- M2M операторы (могут быть списком ID через запятую) ---
     if field_code in _OPERATOR_M2M_FIELDS:
-        # Значение может быть "12, 15, 18" или одиночный ID
         ids = [x.strip() for x in val.split(',') if x.strip()]
         if ids and all(x.isdigit() for x in ids):
             return ', '.join(_resolve_user(uid) for uid in ids)
@@ -405,10 +397,8 @@ def _enrich_entries(entries):
 def audit_log_view(request):
     """Страница журнала аудита с фильтрами и пагинацией."""
 
-    # Проверка доступа
-    if request.user.role not in AUDIT_ALLOWED_ROLES:
-        from django.contrib import messages
-        from django.shortcuts import redirect
+    # ⭐ v3.18.0: Проверка доступа через PermissionChecker
+    if not PermissionChecker.can_view(request.user, 'AUDIT_LOG', 'access'):
         messages.error(request, 'У вас нет доступа к журналу аудита')
         return redirect('workspace_home')
 
