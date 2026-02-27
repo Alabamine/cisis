@@ -300,8 +300,8 @@ def _generate_labels_pdf(samples, lab_code):
 def labels_page(request):
     """Страница генератора этикеток — выбор образцов и печать."""
 
-    if not PermissionChecker.has_journal_access(request.user, 'SAMPLES'):
-        messages.error(request, 'У вас нет доступа к журналу образцов')
+    if not PermissionChecker.can_view(request.user, 'LABELS', 'access'):
+        messages.error(request, 'У вас нет доступа к генератору этикеток')
         return redirect('workspace_home')
 
     laboratories = Laboratory.objects.all().order_by('code')
@@ -335,6 +335,10 @@ def labels_generate(request):
 
     if request.method != 'POST':
         return redirect('labels_page')
+
+    if not PermissionChecker.can_view(request.user, 'LABELS', 'access'):
+        messages.error(request, 'У вас нет доступа к генератору этикеток')
+        return redirect('workspace_home')
 
     sample_ids = request.POST.getlist('sample_ids')
 

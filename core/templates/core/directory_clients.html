@@ -175,7 +175,10 @@
         <h1>🏢 Заказчики и договоры</h1>
         <div class="subtitle">{% if can_edit %}Управление заказчиками, договорами и контактами{% else %}Просмотр заказчиков, договоров и контактов{% endif %}</div>
     </div>
-    <a href="{% url 'workspace_home' %}" class="btn btn-secondary">← Назад</a>
+    <div style="display:flex;gap:8px;">
+        <a href="{% url 'workspace_home' %}" class="btn btn-secondary">← Назад</a>
+        <a href="{% url 'acts_registry' %}" class="btn btn-outline">📋 Реестр актов</a>
+    </div>
 </div>
 
 {% if messages %}

@@ -35,10 +35,10 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────
 
 def _check_acts_access(user):
-    return PermissionChecker.can_view(user, 'ACCEPTANCE_ACTS', 'access')
+    return PermissionChecker.can_view(user, 'CLIENTS', 'access')
 
 def _can_edit_acts(user):
-    return PermissionChecker.can_edit(user, 'ACCEPTANCE_ACTS', 'access')
+    return PermissionChecker.can_edit(user, 'CLIENTS', 'access')
 
 
 # ─────────────────────────────────────────────────────────────
@@ -236,6 +236,51 @@ def act_detail(request, act_id):
     samples = Sample.objects.filter(
         acceptance_act_id=act_id
     ).select_related('laboratory').order_by('sequence_number')
+    # Прогресс по лабораториям (для блока дат завершения)
+    from core.models import Laboratory as Lab
+    ALL_LAB_CODES = ['MI', 'ACT', 'TA', 'ChA', 'WORKSHOP']
+    all_labs = Lab.objects.filter(code__in=ALL_LAB_CODES).order_by('code')
+
+    labs_progress = []
+    for lab in all_labs:
+        lab_samples = samples.filter(laboratory_id=lab.id)
+        total = lab_samples.count()
+
+        if total == 0:
+            labs_progress.append({
+                'laboratory': lab,
+                'total': 0,
+                'completed': 0,
+                'cancelled': 0,
+                'completed_date': None,
+            })
+            continue
+
+        completed = lab_samples.filter(
+            status__in=['COMPLETED', 'PROTOCOL_ISSUED', 'REPLACEMENT_PROTOCOL']
+        ).count()
+        cancelled = lab_samples.filter(status='CANCELLED').count()
+
+        # Автовычисление completed_date
+        al = act.act_laboratories.filter(laboratory_id=lab.id).first()
+        completed_date = None
+        if al:
+            if (completed + cancelled) == total and not al.completed_date:
+                al.completed_date = al.compute_completed_date()
+                if al.completed_date:
+                    al.save()
+            elif al.completed_date and (completed + cancelled) < total:
+                al.completed_date = None
+                al.save()
+            completed_date = al.completed_date
+
+        labs_progress.append({
+            'laboratory': lab,
+            'total': total,
+            'completed': completed,
+            'cancelled': cancelled,
+            'completed_date': completed_date,
+        })
 
     context = {
         'act': act,
@@ -247,6 +292,7 @@ def act_detail(request, act_id):
         'progress': act.progress,
         'deadline_check': act.deadline_check,
         'samples': samples,
+        'labs_progress': labs_progress,
     }
     return render(request, 'core/act_detail.html', context)
 

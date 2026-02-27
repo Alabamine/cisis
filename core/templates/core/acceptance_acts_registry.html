@@ -172,13 +172,10 @@
                 </a>
             </td>
             <td>
-                {% if item.act.document_status %}
-                {{ display.document_status|default_if_none:"" }}
-                {% with item.act.document_status as ds %}
-                    {% if ds == 'SCANS_RECEIVED' %}Сканы{% elif ds == 'ORIGINALS_RECEIVED' %}Оригиналы{% endif %}
-                {% endwith %}
-                {% else %}—{% endif %}
-            </td>
+    {% with item.act.document_status as ds %}
+        {% if ds == 'SCANS_RECEIVED' %}Сканы{% elif ds == 'ORIGINALS_RECEIVED' %}Оригиналы{% else %}—{% endif %}
+    {% endwith %}
+</td>
             <td>
                 {% for al in item.laboratories %}
                 <span class="pill-lab">{{ al.laboratory.code_display }}</span>

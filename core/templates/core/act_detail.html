@@ -153,6 +153,50 @@
 </div>
 {% endif %}
 
+<!-- ═══ Прогресс по лабораториям ═══ -->
+{% if act and labs_progress %}
+<div class="card">
+    <h2>📊 Выполнение работ</h2>
+
+    <!-- Общий прогресс -->
+    {% if progress.total > 0 %}
+    <div style="margin-bottom:16px; display:flex; align-items:center; gap:12px;">
+        <span style="font-size:14px; font-weight:600; color:#333;">Общий:</span>
+        <div style="flex:1; max-width:300px; height:10px; background:#e9ecef; border-radius:5px;">
+            <div style="height:100%; border-radius:5px; background:#28a745; width:{% widthratio progress.completed progress.total 100 %}%;"></div>
+        </div>
+        <span style="font-size:13px; color:#555;">
+            {{ progress.completed }} ✅
+            {% if progress.cancelled %} {{ progress.cancelled }} ❌{% endif %}
+            / {{ progress.total }}
+        </span>
+    </div>
+    {% endif %}
+
+    <!-- Даты завершения по лабораториям -->
+    <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:12px;">
+        {% for lp in labs_progress %}
+        <div style="text-align:center; padding:12px; background:#f8f9fa; border-radius:8px; border:1px solid #eee;">
+            <div style="font-size:12px; font-weight:600; color:#555; margin-bottom:6px;">{{ lp.laboratory.code_display }}</div>
+            {% if lp.total == 0 %}
+                <div style="font-size:18px; color:#ccc;">—</div>
+                <div style="font-size:11px; color:#bbb; margin-top:4px;">нет образцов</div>
+            {% else %}
+                <div style="font-size:15px; font-weight:600; {% if lp.completed_date %}color:#28a745{% else %}color:#333{% endif %};">
+                    {% if lp.completed_date %}{{ lp.completed_date|date:"d.m.Y" }}{% else %}...{% endif %}
+                </div>
+                <div style="font-size:11px; color:#888; margin-top:4px;">
+                    {{ lp.completed }} ✅
+                    {% if lp.cancelled %} {{ lp.cancelled }} ❌{% endif %}
+                    / {{ lp.total }}
+                </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 <form method="POST" {% if act %}action="{% url 'act_detail' act.id %}"{% else %}action="{% url 'act_create' %}"{% endif %}>
 {% csrf_token %}
 
@@ -382,7 +426,9 @@
 
 <script>
 /* ═══ Каскадная загрузка договоров ═══ */
-function loadContracts(clientId) {
+const presetContractId = '{{ preset_contract_id|default:"" }}';
+
+function loadContracts(clientId, selectContractId) {
     const contractSelect = document.getElementById('contract-select');
     contractSelect.innerHTML = '<option value="">— Загрузка... —</option>';
 
@@ -394,10 +440,11 @@ function loadContracts(clientId) {
     fetch('/api/contracts/' + clientId + '/')
         .then(r => r.json())
         .then(data => {
-            const contracts = data.contracts || data;  // поддержка обоих форматов
+            const contracts = data.contracts || data;
             let html = '<option value="">— Выберите договор —</option>';
             contracts.forEach(c => {
-                html += '<option value="' + c.id + '">№ ' + c.number + ' от ' + c.date + '</option>';
+                const selected = (selectContractId && String(c.id) === String(selectContractId)) ? ' selected' : '';
+                html += '<option value="' + c.id + '"' + selected + '>№ ' + c.number + ' от ' + c.date + '</option>';
             });
             contractSelect.innerHTML = html;
         })
@@ -406,12 +453,11 @@ function loadContracts(clientId) {
         });
 }
 
-/* При загрузке — если заказчик предзаполнен, загружаем договоры */
 document.addEventListener('DOMContentLoaded', function() {
     const clientSelect = document.getElementById('client-select');
     if (clientSelect.value) {
         {% if not act %}
-        loadContracts(clientSelect.value);
+        loadContracts(clientSelect.value, presetContractId);
         {% endif %}
     }
 });

@@ -29,8 +29,8 @@ WORKSPACE_CARDS = [
         'url_type': 'name',          # {% url ... %}
     },
     {
-        'journal_code': 'SAMPLES',
-        'requires_column': 'labels_access',
+        'journal_code': 'LABELS',
+        'requires_column': 'access',
         'name': 'Генератор этикеток',
         'icon': '🏷️',
         'description': 'Печать этикеток для образцов',
