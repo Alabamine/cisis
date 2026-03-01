@@ -1,0 +1,523 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ standard.code }} — CISIS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .page { max-width: 1100px; margin: 0 auto; }
+        .header { background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header-top { display: flex; align-items: flex-start; justify-content: space-between; }
+        .header-left h1 { font-size: 22px; color: #333; margin-bottom: 4px; }
+        .header-left .subtitle { font-size: 14px; color: #777; }
+        .header-actions { display: flex; gap: 10px; align-items: center; }
+        .back-link { color: #666; text-decoration: none; font-size: 14px; padding: 8px 16px; background: #f5f5f5; border-radius: 6px; }
+        .back-link:hover { background: #e8e8e8; }
+        .btn { padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .btn-primary { background: #667eea; color: #fff; }
+        .btn-primary:hover { background: #5a6fd6; }
+        .btn-danger { background: #fce8e6; color: #c5221f; }
+        .btn-danger:hover { background: #f8d7d4; }
+        .btn-success { background: #e6f4ea; color: #137333; }
+        .btn-success:hover { background: #d4edda; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Карточка стандарта */
+        .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .card-title { font-size: 16px; font-weight: 600; color: #333; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+        .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .field-group { }
+        .field-group.full { grid-column: 1 / -1; }
+        .field-label { font-size: 12px; color: #888; margin-bottom: 4px; font-weight: 500; }
+        .field-value { font-size: 14px; color: #333; padding: 8px 12px; background: #f8f9fa; border-radius: 6px; min-height: 36px; }
+        .field-value.editable { background: #fff; border: 1px solid #ddd; cursor: text; }
+        .field-value.editable:focus { border-color: #667eea; outline: none; box-shadow: 0 0 0 2px rgba(102,126,234,0.15); }
+        .field-input { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+        .field-input:focus { border-color: #667eea; outline: none; box-shadow: 0 0 0 2px rgba(102,126,234,0.15); }
+
+        /* Бейджи лабораторий */
+        .badges { display: flex; gap: 6px; flex-wrap: wrap; padding: 4px 0; }
+        .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+        .badge.lab { background: #f3e8fd; color: #7b2cbf; }
+        .badge.area { background: #e8f0fe; color: #1a73e8; }
+        .badge.inactive-badge { background: #fce8e6; color: #c5221f; }
+
+        /* Чекбоксы M2M (в режиме редактирования) */
+        .cb-group { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
+        .cb-group label { display: flex; align-items: center; gap: 5px; font-size: 13px; color: #444; cursor: pointer; padding: 4px 10px; border: 1px solid #e0e0e0; border-radius: 6px; }
+        .cb-group label:hover { border-color: #667eea; background: #f8f9ff; }
+        .cb-group input[type="checkbox"] { accent-color: #667eea; }
+
+        /* Статистика показателей */
+        .stats-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+        .stat-pill { padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; }
+        .stat-pill.total { background: #e8f0fe; color: #1a73e8; }
+        .stat-pill.primary { background: #e6f4ea; color: #137333; }
+        .stat-pill.auxiliary { background: #fef7e0; color: #b06000; }
+        .stat-pill.calculated { background: #fce8e6; color: #c5221f; }
+
+        /* Таблица показателей */
+        .params-table { width: 100%; border-collapse: collapse; }
+        .params-table th { background: #f8f9fa; padding: 10px 14px; text-align: left; font-size: 11px; color: #6c757d; font-weight: 600; text-transform: uppercase; border-bottom: 2px solid #e9ecef; }
+        .params-table td { padding: 11px 14px; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #333; vertical-align: middle; }
+        .params-table tr:hover { background: #f8f9ff; }
+        .params-table tr:last-child td { border-bottom: none; }
+        .params-table tr[data-role="AUXILIARY"] { opacity: 0.75; }
+        .params-table tr[data-role="CALCULATED"] { opacity: 0.7; font-style: italic; }
+
+        .param-name { font-weight: 500; }
+        .param-name-en { font-size: 12px; color: #aaa; }
+        .role-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .role-badge.PRIMARY { background: #e6f4ea; color: #137333; }
+        .role-badge.AUXILIARY { background: #fef7e0; color: #b06000; }
+        .role-badge.CALCULATED { background: #fce8e6; color: #c5221f; }
+        .default-badge { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 11px; background: #f3e8fd; color: #7b2cbf; }
+
+        .action-btns { display: flex; gap: 6px; }
+        .btn-icon { width: 32px; height: 32px; border: none; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; background: #f5f5f5; color: #666; }
+        .btn-icon:hover { background: #e8e8e8; }
+        .btn-icon.danger:hover { background: #fce8e6; color: #c5221f; }
+
+        .empty-params { text-align: center; padding: 40px 20px; color: #999; }
+        .empty-params .icon { font-size: 36px; margin-bottom: 8px; }
+
+        /* Режимы просмотр/редактирование */
+        .edit-mode { display: none; }
+        .view-mode { display: block; }
+        body.editing .edit-mode { display: block; }
+        body.editing .view-mode { display: none; }
+
+        /* Модальное окно показателя */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-box { background: #fff; border-radius: 12px; padding: 24px; width: 520px; max-width: 95vw; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+        .modal-box h2 { font-size: 18px; margin: 0 0 18px; color: #333; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 12px; color: #555; margin-bottom: 4px; font-weight: 500; }
+        .form-group input, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+        .form-group input:focus, .form-group select:focus { border-color: #667eea; outline: none; }
+        .form-row { display: flex; gap: 12px; }
+        .form-row .form-group { flex: 1; }
+        .form-hint { font-size: 11px; color: #999; margin-top: 3px; }
+        .form-hint a { color: #667eea; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee; }
+
+        /* Комбобокс поиска */
+        .search-combo { position: relative; }
+        .search-results { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #ddd; border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .search-results.active { display: block; }
+        .search-result-item { padding: 8px 12px; cursor: pointer; font-size: 14px; display: flex; justify-content: space-between; }
+        .search-result-item:hover { background: #f0f4ff; }
+        .search-result-item .sr-name { font-weight: 500; }
+        .search-result-item .sr-unit { color: #999; font-size: 12px; }
+        .search-result-item .sr-cat { font-size: 11px; color: #aaa; }
+        .search-create-new { padding: 8px 12px; cursor: pointer; font-size: 13px; border-top: 1px solid #eee; color: #667eea; font-weight: 500; }
+        .search-create-new:hover { background: #f0f4ff; }
+
+        .new-param-section { display: none; margin-top: 12px; padding: 14px; background: #f8f9ff; border-radius: 8px; border: 1px dashed #c5d4e8; }
+        .new-param-section.active { display: block; }
+        .new-param-section h3 { font-size: 14px; margin: 0 0 12px; color: #667eea; }
+
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; color: #fff; font-size: 14px; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .toast.success { background: #137333; }
+        .toast.error { background: #c5221f; }
+        .toast.active { opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <!-- Хедер -->
+        <div class="header">
+            <div class="header-top">
+                <div class="header-left">
+                    <h1>{{ standard.code }}{% if not standard.is_active %} <span class="badge inactive-badge">Неактивен</span>{% endif %}</h1>
+                    <div class="subtitle">{{ standard.name|default:"" }}</div>
+                </div>
+                <div class="header-actions">
+                    {% if can_edit %}
+                    <button class="btn btn-primary view-mode" onclick="enterEditMode()">✏️ Редактировать</button>
+                    <button class="btn btn-primary edit-mode" onclick="saveStandard()">💾 Сохранить</button>
+                    <button class="btn edit-mode" style="background:#f5f5f5;color:#666;" onclick="exitEditMode()">Отмена</button>
+                    {% if standard.is_active %}
+                    <button class="btn btn-danger view-mode" onclick="toggleStandard()">Деактивировать</button>
+                    {% else %}
+                    <button class="btn btn-success view-mode" onclick="toggleStandard()">Активировать</button>
+                    {% endif %}
+                    {% endif %}
+                    <a href="{% url 'standards_list' %}" class="back-link">← Все стандарты</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Блок полей стандарта -->
+        <div class="card">
+            <div class="card-title">Данные стандарта</div>
+            <div class="field-grid">
+                <div class="field-group">
+                    <div class="field-label">Код стандарта</div>
+                    <div class="field-value view-mode">{{ standard.code }}</div>
+                    <input class="field-input edit-mode" id="stdCode" value="{{ standard.code }}">
+                </div>
+                <div class="field-group">
+                    <div class="field-label">Название</div>
+                    <div class="field-value view-mode">{{ standard.name|default:"—" }}</div>
+                    <input class="field-input edit-mode" id="stdName" value="{{ standard.name|default:'' }}">
+                </div>
+                <div class="field-group">
+                    <div class="field-label">Тип испытания</div>
+                    <div class="field-value view-mode">{{ standard.test_type|default:"—" }}</div>
+                    <input class="field-input edit-mode" id="stdTestType" value="{{ standard.test_type|default:'' }}">
+                </div>
+                <div class="field-group">
+                    <div class="field-label">Код испытания</div>
+                    <div class="field-value view-mode">{{ standard.test_code|default:"—" }}</div>
+                    <input class="field-input edit-mode" id="stdTestCode" value="{{ standard.test_code|default:'' }}">
+                </div>
+                <div class="field-group">
+                    <div class="field-label">Лаборатории</div>
+                    <div class="badges view-mode">
+                        {% for sl in standard.standardlaboratory_set.all %}
+                            <span class="badge lab">{{ sl.laboratory.code_display }}</span>
+                        {% empty %}
+                            <span style="color: #ccc; font-size: 13px;">Не указаны</span>
+                        {% endfor %}
+                    </div>
+                    <div class="cb-group edit-mode">
+                        {% for lab in all_laboratories %}
+                        <label><input type="checkbox" value="{{ lab.id }}" class="std-lab-cb" {% if lab.id in standard_lab_ids %}checked{% endif %}> {{ lab.code_display }}</label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% if all_areas %}
+                <div class="field-group">
+                    <div class="field-label">Области аккредитации</div>
+                    <div class="badges view-mode">
+                        {% for sa in standard.standardaccreditationarea_set.all %}
+                            <span class="badge area">{{ sa.accreditation_area.name }}</span>
+                        {% empty %}
+                            <span style="color: #ccc; font-size: 13px;">Не указаны</span>
+                        {% endfor %}
+                    </div>
+                    <div class="cb-group edit-mode">
+                        {% for area in all_areas %}
+                        <label><input type="checkbox" value="{{ area.id }}" class="std-area-cb" {% if area.id in standard_area_ids %}checked{% endif %}> {{ area.name }}</label>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Блок показателей -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <div class="card-title" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none;">Определяемые показатели</div>
+                {% if can_edit %}
+                <button class="btn btn-primary" onclick="openAddParamModal()" style="font-size: 13px; padding: 6px 14px;">＋ Добавить</button>
+                {% endif %}
+            </div>
+
+            <div class="stats-row">
+                <span class="stat-pill total">Всего: {{ stats.total }}</span>
+                <span class="stat-pill primary">Основных: {{ stats.primary }}</span>
+                <span class="stat-pill auxiliary">Вспомогательных: {{ stats.auxiliary }}</span>
+                {% if stats.calculated > 0 %}<span class="stat-pill calculated">Расчётных: {{ stats.calculated }}</span>{% endif %}
+            </div>
+
+            {% if std_parameters %}
+            <table class="params-table">
+                <thead>
+                    <tr>
+                        <th style="width: 36px;">#</th>
+                        <th>Показатель</th>
+                        <th style="width: 80px;">Ед. изм.</th>
+                        <th style="width: 100px;">Роль</th>
+                        <th style="width: 70px;">Умолч.</th>
+                        <th style="width: 55px;">Точн.</th>
+                        {% if can_edit %}<th style="width: 80px;"></th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sp in std_parameters %}
+                    <tr data-id="{{ sp.id }}" data-role="{{ sp.parameter_role }}">
+                        <td style="color: #bbb; font-size: 12px;">{{ forloop.counter }}</td>
+                        <td>
+                            <span class="param-name">{{ sp.parameter.name|safe }}</span>
+                            {% if sp.parameter.name_en %}<br><span class="param-name-en">{{ sp.parameter.name_en }}</span>{% endif %}
+                        </td>
+                        <td style="color: #777; font-size: 13px;">{{ sp.effective_unit|default:"—" }}</td>
+                        <td><span class="role-badge {{ sp.parameter_role }}">{{ sp.get_parameter_role_display }}</span></td>
+                        <td>
+                            {% if sp.is_default %}<span class="default-badge">да</span>{% else %}<span style="color:#ccc;font-size:12px;">нет</span>{% endif %}
+                        </td>
+                        <td style="text-align:center;color:#777;">{{ sp.precision|default:"—" }}</td>
+                        {% if can_edit %}
+                        <td>
+                            <div class="action-btns">
+                                <button class="btn-icon" onclick="openEditParamModal({{ sp.id }})" title="Редактировать">✏️</button>
+                                <button class="btn-icon danger" onclick="deleteParam({{ sp.id }}, '{{ sp.parameter.name|escapejs }}')" title="Удалить">🗑️</button>
+                            </div>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-params">
+                <div class="icon">📋</div>
+                <p>Нет показателей</p>
+                {% if can_edit %}<button class="btn btn-primary" onclick="openAddParamModal()" style="margin-top:10px;font-size:13px;">＋ Добавить первый</button>{% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Модалка показателя -->
+    <div class="modal-overlay" id="paramModal">
+        <div class="modal-box">
+            <h2 id="paramModalTitle">Добавить показатель</h2>
+
+            <div class="form-group" id="searchGroup">
+                <label>Показатель из справочника</label>
+                <div class="search-combo">
+                    <input type="text" id="paramSearch" placeholder="Начните вводить название..." autocomplete="off">
+                    <div class="search-results" id="searchResults"></div>
+                </div>
+                <div class="form-hint">Выберите или <a href="#" onclick="showNewSection();return false;">создайте новый</a>. Поддерживаются Unicode-индексы (σ₁, W₂₄, см²) и HTML (&lt;sub&gt;, &lt;sup&gt;)</div>
+            </div>
+
+            <div class="form-group" id="selectedGroup" style="display:none;">
+                <label>Выбранный показатель</label>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div id="selectedDisplay" style="flex:1;padding:8px 12px;background:#f0f4ff;border-radius:6px;font-weight:500;"></div>
+                    <button type="button" onclick="clearSelected()" style="background:none;border:none;cursor:pointer;font-size:16px;color:#999;">✕</button>
+                </div>
+                <input type="hidden" id="selectedParamId">
+            </div>
+
+            <div class="new-param-section" id="newSection">
+                <h3>✨ Новый показатель</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>Название *</label><input type="text" id="newName" placeholder="Прочность при растяжении σᵨ"></div>
+                    <div class="form-group" style="flex:0.5;"><label>Ед. изм.</label><input type="text" id="newUnit" placeholder="МПа"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Название (EN)</label><input type="text" id="newNameEn" placeholder="Tensile strength"></div>
+                    <div class="form-group"><label>Категория</label><select id="newCategory">{% for v, l in categories %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
+                </div>
+                <div class="form-hint">Для индексов: σ<sub>р</sub> → σ&lt;sub&gt;р&lt;/sub&gt; или Unicode σᵨ. Нижние цифры: ₀₁₂₃₄₅₆₇₈₉. Верхние: ⁰¹²³⁴⁵⁶⁷⁸⁹</div>
+                <div style="text-align:right;margin-top:8px;">
+                    <button type="button" onclick="createParam()" class="btn btn-primary" style="font-size:13px;padding:6px 14px;">Создать и выбрать</button>
+                    <button type="button" onclick="hideNewSection()" class="btn" style="font-size:13px;padding:6px 14px;background:#f5f5f5;color:#666;">Отмена</button>
+                </div>
+            </div>
+
+            <hr style="border:none;border-top:1px solid #eee;margin:16px 0;">
+
+            <div class="form-row">
+                <div class="form-group"><label>Роль</label><select id="paramRole">{% for v, l in roles %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
+                <div class="form-group" style="flex:0.5;"><label>По умолчанию</label><select id="paramDefault"><option value="true">Да</option><option value="false">Нет</option></select></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Ед. изм. (переопределение)</label><input type="text" id="paramUnitOvr" placeholder="Если отличается"></div>
+                <div class="form-group" style="flex:0.5;"><label>Точность (знаков)</label><input type="number" id="paramPrec" min="0" max="10" placeholder="—"></div>
+            </div>
+
+            <input type="hidden" id="editSpId" value="">
+            <div class="modal-actions">
+                <button class="btn" style="background:#f5f5f5;color:#666;" onclick="closeParamModal()">Отмена</button>
+                <button class="btn btn-primary" id="btnParamSave" onclick="saveParam()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    const STD_ID = {{ standard.id }};
+    const CSRF = '{{ csrf_token }}';
+
+    const PARAMS_DATA = {
+        {% for sp in std_parameters %}
+        {{ sp.id }}: {
+            parameter_id: {{ sp.parameter_id }},
+            parameter_name: "{{ sp.parameter.name|escapejs }}",
+            parameter_unit: "{{ sp.parameter.unit|default:''|escapejs }}",
+            parameter_role: "{{ sp.parameter_role }}",
+            is_default: {{ sp.is_default|yesno:"true,false" }},
+            unit_override: "{{ sp.unit_override|default:''|escapejs }}",
+            precision: {{ sp.precision|default:"null" }},
+            display_order: {{ sp.display_order }},
+        },
+        {% endfor %}
+    };
+
+    // ========== Редактирование стандарта ==========
+    function enterEditMode() { document.body.classList.add('editing'); }
+    function exitEditMode() { document.body.classList.remove('editing'); }
+
+    function saveStandard() {
+        const code = document.getElementById('stdCode').value.trim();
+        if (!code) { showToast('Код обязателен', 'error'); return; }
+        const labIds = []; document.querySelectorAll('.std-lab-cb:checked').forEach(cb => labIds.push(parseInt(cb.value)));
+        const areaIds = []; document.querySelectorAll('.std-area-cb:checked').forEach(cb => areaIds.push(parseInt(cb.value)));
+
+        fetch('/api/standards/save/', {
+            method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+            body: JSON.stringify({
+                standard_id: STD_ID, code: code,
+                name: document.getElementById('stdName').value.trim(),
+                test_type: document.getElementById('stdTestType').value.trim(),
+                test_code: document.getElementById('stdTestCode').value.trim(),
+                laboratory_ids: labIds, area_ids: areaIds,
+            }),
+        }).then(r => r.json()).then(data => {
+            if (data.error) { showToast(data.error, 'error'); return; }
+            showToast('Стандарт сохранён', 'success');
+            setTimeout(() => location.reload(), 400);
+        });
+    }
+
+    function toggleStandard() {
+        const action = '{{ standard.is_active|yesno:"деактивировать,активировать" }}';
+        if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} стандарт «{{ standard.code|escapejs }}»?`)) return;
+        fetch('/api/standards/toggle/', {
+            method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+            body: JSON.stringify({standard_id: STD_ID}),
+        }).then(r => r.json()).then(data => {
+            if (data.error) { showToast(data.error, 'error'); return; }
+            showToast(data.message, 'success');
+            setTimeout(() => location.reload(), 400);
+        });
+    }
+
+    // ========== Показатели ==========
+    function openAddParamModal() {
+        document.getElementById('paramModalTitle').textContent = 'Добавить показатель';
+        document.getElementById('editSpId').value = '';
+        resetParamForm();
+        document.getElementById('searchGroup').style.display = '';
+        document.getElementById('selectedGroup').style.display = 'none';
+        document.getElementById('paramModal').classList.add('active');
+        document.getElementById('paramSearch').focus();
+    }
+
+    function openEditParamModal(spId) {
+        const d = PARAMS_DATA[spId]; if (!d) return;
+        document.getElementById('paramModalTitle').textContent = 'Редактировать показатель';
+        document.getElementById('editSpId').value = spId;
+        document.getElementById('searchGroup').style.display = 'none';
+        document.getElementById('selectedGroup').style.display = '';
+        document.getElementById('selectedParamId').value = d.parameter_id;
+        document.getElementById('selectedDisplay').textContent = d.parameter_name + (d.parameter_unit ? ` (${d.parameter_unit})` : '');
+        document.getElementById('paramRole').value = d.parameter_role;
+        document.getElementById('paramDefault').value = d.is_default ? 'true' : 'false';
+        document.getElementById('paramUnitOvr').value = d.unit_override;
+        document.getElementById('paramPrec').value = d.precision !== null ? d.precision : '';
+        hideNewSection();
+        document.getElementById('paramModal').classList.add('active');
+    }
+
+    function closeParamModal() { document.getElementById('paramModal').classList.remove('active'); }
+
+    function resetParamForm() {
+        document.getElementById('selectedParamId').value = '';
+        document.getElementById('selectedDisplay').textContent = '';
+        document.getElementById('paramSearch').value = '';
+        document.getElementById('searchResults').classList.remove('active');
+        document.getElementById('paramRole').value = 'PRIMARY';
+        document.getElementById('paramDefault').value = 'true';
+        document.getElementById('paramUnitOvr').value = '';
+        document.getElementById('paramPrec').value = '';
+        hideNewSection();
+    }
+
+    // Поиск
+    let sTimer = null;
+    const sInput = document.getElementById('paramSearch');
+    const sResults = document.getElementById('searchResults');
+    if (sInput) {
+        sInput.addEventListener('input', function() { clearTimeout(sTimer); const q = this.value.trim(); if (q.length < 1) { sResults.classList.remove('active'); return; } sTimer = setTimeout(() => doSearch(q), 300); });
+        sInput.addEventListener('focus', function() { if (this.value.trim().length >= 1) doSearch(this.value.trim()); });
+    }
+    document.addEventListener('click', e => { if (!e.target.closest('.search-combo')) sResults.classList.remove('active'); });
+
+    function doSearch(q) {
+        fetch(`/api/parameters/search/?q=${encodeURIComponent(q)}&exclude_standard=${STD_ID}`)
+        .then(r => r.json()).then(data => {
+            let h = '';
+            if (data.results && data.results.length) {
+                data.results.forEach(p => { const u = p.unit ? ` (${p.unit})` : ''; h += `<div class="search-result-item" onclick="selectParam(${p.id},'${p.name.replace(/'/g,"\\'")}','${(p.unit||'').replace(/'/g,"\\'")}')"><div><span class="sr-name">${p.name}</span><span class="sr-unit">${u}</span></div><span class="sr-cat">${p.category_display}</span></div>`; });
+            } else { h += '<div style="padding:10px 12px;color:#999;font-size:13px;">Ничего не найдено</div>'; }
+            h += '<div class="search-create-new" onclick="showNewSection()">＋ Создать новый</div>';
+            sResults.innerHTML = h; sResults.classList.add('active');
+        });
+    }
+
+    function selectParam(id, name, unit) {
+        document.getElementById('selectedParamId').value = id;
+        document.getElementById('selectedDisplay').textContent = unit ? `${name} (${unit})` : name;
+        document.getElementById('searchGroup').style.display = 'none';
+        document.getElementById('selectedGroup').style.display = '';
+        sResults.classList.remove('active'); hideNewSection();
+    }
+
+    function clearSelected() {
+        document.getElementById('selectedParamId').value = '';
+        document.getElementById('selectedGroup').style.display = 'none';
+        document.getElementById('searchGroup').style.display = '';
+        document.getElementById('paramSearch').value = '';
+        document.getElementById('paramSearch').focus();
+    }
+
+    function showNewSection() { document.getElementById('newSection').classList.add('active'); sResults.classList.remove('active'); const q = sInput.value.trim(); if (q && !document.getElementById('newName').value) document.getElementById('newName').value = q; document.getElementById('newName').focus(); }
+    function hideNewSection() { document.getElementById('newSection').classList.remove('active'); document.getElementById('newName').value = ''; document.getElementById('newUnit').value = ''; document.getElementById('newNameEn').value = ''; document.getElementById('newCategory').value = 'OTHER'; }
+
+    function createParam() {
+        const name = document.getElementById('newName').value.trim();
+        if (!name) { showToast('Введите название', 'error'); return; }
+        fetch('/api/parameters/create/', { method: 'POST', headers: {'Content-Type':'application/json','X-CSRFToken':CSRF},
+            body: JSON.stringify({ name, name_en: document.getElementById('newNameEn').value.trim(), unit: document.getElementById('newUnit').value.trim(), category: document.getElementById('newCategory').value }),
+        }).then(r => r.json()).then(data => {
+            if (data.error) { if (data.existing_id) { selectParam(data.existing_id, name, document.getElementById('newUnit').value.trim()); showToast('Уже существует, выбран', 'success'); } else showToast(data.error, 'error'); return; }
+            selectParam(data.id, data.name, data.unit); hideNewSection(); showToast(`«${data.name}» создан`, 'success');
+        });
+    }
+
+    function saveParam() {
+        const pid = document.getElementById('selectedParamId').value;
+        if (!pid) { showToast('Выберите показатель', 'error'); return; }
+        const btn = document.getElementById('btnParamSave'); btn.disabled = true; btn.textContent = 'Сохранение...';
+        fetch('/api/parameters/save/', { method: 'POST', headers: {'Content-Type':'application/json','X-CSRFToken':CSRF},
+            body: JSON.stringify({ standard_id: STD_ID, std_parameter_id: document.getElementById('editSpId').value || null, parameter_id: parseInt(pid), parameter_role: document.getElementById('paramRole').value, is_default: document.getElementById('paramDefault').value === 'true', unit_override: document.getElementById('paramUnitOvr').value.trim(), precision: document.getElementById('paramPrec').value || null }),
+        }).then(r => r.json()).then(data => {
+            btn.disabled = false; btn.textContent = 'Сохранить';
+            if (data.error) { showToast(data.error, 'error'); return; }
+            showToast(document.getElementById('editSpId').value ? 'Обновлён' : 'Добавлен', 'success');
+            closeParamModal(); setTimeout(() => location.reload(), 400);
+        }).catch(() => { btn.disabled = false; btn.textContent = 'Сохранить'; showToast('Ошибка', 'error'); });
+    }
+
+    function deleteParam(spId, name) {
+        if (!confirm(`Удалить «${name}»?`)) return;
+        fetch('/api/parameters/delete/', { method: 'POST', headers: {'Content-Type':'application/json','X-CSRFToken':CSRF},
+            body: JSON.stringify({std_parameter_id: spId}),
+        }).then(r => r.json()).then(data => {
+            if (data.error) { showToast(data.error, 'error'); return; }
+            showToast(data.message || 'Удалено', 'success');
+            const row = document.querySelector(`tr[data-id="${spId}"]`);
+            if (row) { row.style.transition = 'opacity 0.3s'; row.style.opacity = '0'; setTimeout(() => row.remove(), 300); }
+        });
+    }
+
+    function showToast(msg, type) { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} active`; setTimeout(() => t.classList.remove('active'), 3000); }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeParamModal(); } });
+    document.getElementById('paramModal').addEventListener('click', function(e) { if (e.target === this) closeParamModal(); });
+    </script>
+</body>
+</html>

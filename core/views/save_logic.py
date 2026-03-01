@@ -8,6 +8,8 @@ CISIS — Логика сохранения полей образца.
 - _recalculate_auto_fields: пересчёт зависимых полей
 - _parse_datetime_value: парсинг datetime из формы
 - _validate_trainee_for_draft: валидация стажёров
+- _handle_manufacturing_toggle: включение/отключение нарезки ⭐ v3.20.0
+- _handle_moisture_toggle: включение/отключение влагонасыщения ⭐ v3.20.0
 """
 
 import logging
@@ -38,6 +40,97 @@ from .freeze_logic import _is_field_frozen
 from core.views.audit import log_action, log_field_changes, log_m2m_changes
 logger = logging.getLogger(__name__)
 
+
+# ─────────────────────────────────────────────────────────────
+# ⭐ v3.20.0: Обработка включения/отключения нарезки и влагонасыщения
+# ─────────────────────────────────────────────────────────────
+
+def _handle_manufacturing_toggle(request, sample, old_value, new_value, audit_old_values):
+    """
+    ⭐ v3.20.0: Обрабатывает включение/отключение нарезки на уже существующем образце.
+
+    Включение (False → True):
+      - workshop_status = IN_WORKSHOP
+      - manufacturing_deadline пересчитывается (если не задан вручную в форме)
+      - panel_id автогенерируется (в save())
+
+    Отключение (True → False):
+      - workshop_status = None
+      - manufacturing_deadline = None
+      - further_movement = ''
+      - cutting_standard = None
+
+    Статус образца НЕ меняется автоматически.
+    """
+    extra_updated = []
+
+    if new_value and not old_value:
+        # ─── Включение нарезки ───
+        old_ws = sample.workshop_status
+        sample.workshop_status = WorkshopStatus.IN_WORKSHOP
+        if old_ws != WorkshopStatus.IN_WORKSHOP:
+            audit_old_values['workshop_status'] = (old_ws, WorkshopStatus.IN_WORKSHOP)
+            extra_updated.append('Статус мастерской')
+
+    elif old_value and not new_value:
+        # ─── Отключение нарезки ───
+        # workshop_status → None
+        old_ws = sample.workshop_status
+        if old_ws is not None:
+            sample.workshop_status = None
+            audit_old_values['workshop_status'] = (old_ws, None)
+            extra_updated.append('Статус мастерской')
+
+        # manufacturing_deadline → None
+        old_md = sample.manufacturing_deadline
+        if old_md is not None:
+            sample.manufacturing_deadline = None
+            audit_old_values['manufacturing_deadline'] = (old_md, None)
+            extra_updated.append('Срок изготовления')
+
+        # further_movement → ''
+        old_fm = sample.further_movement
+        if old_fm:
+            sample.further_movement = ''
+            audit_old_values['further_movement'] = (old_fm, '')
+            extra_updated.append('Дальнейшее движение')
+
+        # cutting_standard → None
+        old_cs = sample.cutting_standard_id
+        if old_cs is not None:
+            sample.cutting_standard_id = None
+            audit_old_values['cutting_standard'] = (old_cs, None)
+            extra_updated.append('Стандарт на нарезку')
+
+    return extra_updated
+
+
+def _handle_moisture_toggle(request, sample, old_value, new_value, audit_old_values):
+    """
+    ⭐ v3.20.0: Обрабатывает включение/отключение влагонасыщения на уже существующем образце.
+
+    Отключение (True → False):
+      - moisture_sample_id = None
+
+    Включение: ничего автоматического — moisture_sample_id задаётся через FK-поле формы.
+    Статус образца НЕ меняется автоматически.
+    """
+    extra_updated = []
+
+    if old_value and not new_value:
+        # ─── Отключение влагонасыщения ───
+        old_ms = sample.moisture_sample_id
+        if old_ms is not None:
+            sample.moisture_sample_id = None
+            audit_old_values['moisture_sample'] = (old_ms, None)
+            extra_updated.append('Образец влагонасыщения')
+
+    return extra_updated
+
+
+# ─────────────────────────────────────────────────────────────
+# Парсинг и пересчёт
+# ─────────────────────────────────────────────────────────────
 
 def _parse_datetime_value(form_value):
     """Парсит datetime из формы (YYYY-MM-DDTHH:MM или YYYY-MM-DD)."""
@@ -274,6 +367,21 @@ def save_sample_fields(request, sample):
     # Пересчёт автополей при изменении зависимостей
     if changed_field_codes:
         _recalculate_auto_fields(sample, changed_field_codes)
+
+    # ⭐ v3.20.0: Обработка включения/отключения нарезки и влагонасыщения
+    if 'manufacturing' in changed_field_codes:
+        old_mfg = not sample.manufacturing  # инвертируем, т.к. уже изменено
+        extra = _handle_manufacturing_toggle(
+            request, sample, old_mfg, sample.manufacturing, audit_old_values
+        )
+        updated_fields.extend(extra)
+
+    if 'moisture_conditioning' in changed_field_codes:
+        old_mc = not sample.moisture_conditioning  # инвертируем
+        extra = _handle_moisture_toggle(
+            request, sample, old_mc, sample.moisture_conditioning, audit_old_values
+        )
+        updated_fields.extend(extra)
 
     # Синхронизация: при отмене образца автоматически отменяем workshop_status
     if sample.manufacturing and sample.status == 'CANCELLED' and sample.workshop_status != 'CANCELLED':

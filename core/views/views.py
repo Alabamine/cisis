@@ -55,6 +55,15 @@ WORKSPACE_CARDS = [
         'url': 'directory_clients',
         'url_type': 'name',
     },
+
+    {
+        'name': 'Справочник стандартов',  # было 'Показатели стандартов'
+        'icon': '📚',  # было '📊'
+        'url': 'standards_list',  # было 'standards_parameters_list'
+        'description': 'Стандарты и определяемые показатели',
+        'journal_code': 'SAMPLES',
+        'requires_column': 'parameters_management',
+    },
 ]
 
 

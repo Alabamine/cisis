@@ -82,11 +82,9 @@ from .logs import (
 )
 
 # 8. Файлы (зависят от Sample, User)
-from .files import (
-    SampleFile,
-)
+from .files import File, FileTypeDefault, FileVisibilityRule, PersonalFolderAccess
 
-
+from .parameters import Parameter, StandardParameter, SampleParameter
 # ═══════════════════════════════════════════════════════════════════
 # __all__ — явно указываем что экспортируется при "from core.models import *"
 # ═══════════════════════════════════════════════════════════════════

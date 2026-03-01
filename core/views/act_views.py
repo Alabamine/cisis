@@ -25,6 +25,7 @@ from core.models import (
     Client, Contract, Laboratory,
 )
 from core.views.audit import log_action, log_field_changes
+from core.views.file_views import get_files_for_entity
 from core.permissions import PermissionChecker
 
 logger = logging.getLogger(__name__)
@@ -282,6 +283,11 @@ def act_detail(request, act_id):
             'completed_date': completed_date,
         })
 
+    # Файлы акта и договора (v3.21.1)
+    act_files = get_files_for_entity(request.user, 'acceptance_act', act.id)
+    contract_files = get_files_for_entity(request.user, 'contract', act.contract_id)
+    can_edit_files = PermissionChecker.can_edit(request.user, 'FILES', 'clients_files')
+
     context = {
         'act': act,
         'clients': clients,
@@ -293,6 +299,9 @@ def act_detail(request, act_id):
         'deadline_check': act.deadline_check,
         'samples': samples,
         'labs_progress': labs_progress,
+        'act_files': act_files,
+        'contract_files': contract_files,
+        'can_edit_files': can_edit_files,
     }
     return render(request, 'core/act_detail.html', context)
 

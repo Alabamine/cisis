@@ -37,6 +37,8 @@ from .views.act_views import (
     acts_registry, act_create, act_detail, api_contract_acts,
 )
 
+from core.views import parameter_views
+
 urlpatterns = [
     path('permissions/', permissions_views.manage_permissions, name='manage_permissions'),
     path('workspace/', workspace_home, name='workspace_home'),
@@ -51,10 +53,6 @@ urlpatterns = [
     path('workspace/samples/<int:sample_id>/unfreeze-registration/', unfreeze_registration_block, name='unfreeze_registration'),
     path('workspace/samples/<int:sample_id>/verify/', verification_views.verify_sample, name='verify_sample'),
     path('workspace/samples/<int:sample_id>/verify-protocol/', verification_views.verify_protocol, name='verify_protocol'),
-    path('workspace/samples/<int:sample_id>/upload/', file_views.upload_sample_file, name='upload_sample_file'),
-    path('workspace/files/<int:file_id>/download/', file_views.download_sample_file, name='download_sample_file'),
-    path('workspace/files/<int:file_id>/view/', file_views.view_sample_file, name='view_sample_file'),
-    path('workspace/files/<int:file_id>/delete/', file_views.delete_sample_file, name='delete_sample_file'),
     path('api/search-protocols/', search_protocols, name='search_protocols'),
     path('api/contracts/<int:client_id>/', api_views.get_client_contracts, name='get_client_contracts'),
     path('api/search-standards/', search_standards, name='search_standards'),
@@ -82,4 +80,28 @@ urlpatterns = [
     path('workspace/clients/<int:client_id>/contacts/create/', contact_create, name='contact_create'),
     path('workspace/contacts/<int:contact_id>/edit/', contact_edit, name='contact_edit'),
     path('workspace/contacts/<int:contact_id>/delete/', contact_delete, name='contact_delete'),
+
+    # --- Файловая система (v3.21.0) ---
+    path('files/upload/', file_views.file_upload, name='file_upload'),
+    path('files/<int:file_id>/download/', file_views.file_download, name='file_download'),
+    path('files/<int:file_id>/thumbnail/', file_views.file_thumbnail, name='file_thumbnail'),
+    path('files/<int:file_id>/delete/', file_views.file_delete, name='file_delete'),
+    path('files/<int:file_id>/replace/', file_views.file_replace, name='file_replace'),
+    path('api/files/types/<str:category>/', file_views.api_file_types, name='api_file_types'),
+    path('api/files/<str:entity_type>/<int:entity_id>/', file_views.api_entity_files, name='api_entity_files'),
+
+    # Справочник стандартов + показатели
+    path('workspace/standards/', parameter_views.standards_list, name='standards_list'),
+    path('workspace/standards/<int:standard_id>/', parameter_views.standard_detail, name='standard_detail'),
+
+    # AJAX: стандарты
+    path('api/standards/save/', parameter_views.api_standard_save, name='api_standard_save'),
+    path('api/standards/toggle/', parameter_views.api_standard_toggle, name='api_standard_toggle'),
+
+    # AJAX: показатели (без изменений)
+    path('api/parameters/save/', parameter_views.api_parameter_save, name='api_parameter_save'),
+    path('api/parameters/delete/', parameter_views.api_parameter_delete, name='api_parameter_delete'),
+    path('api/parameters/search/', parameter_views.api_parameter_search, name='api_parameter_search'),
+    path('api/parameters/create/', parameter_views.api_parameter_create, name='api_parameter_create'),
+    path('api/parameters/reorder/', parameter_views.api_parameter_reorder, name='api_parameter_reorder'),
 ]

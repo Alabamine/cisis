@@ -83,6 +83,121 @@
         .footer-actions { display: flex; gap: 10px; justify-content: flex-end; padding: 16px 0; }
         .no-data { color: #bbb; font-size: 13px; padding: 10px 0; font-style: italic; }
 
+        /* ═══ Модальные окна ═══ */
+        .modal-overlay {
+            display: none; position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.5); z-index: 1000;
+            align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: white; border-radius: 8px;
+            width: 90%; max-width: 500px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            padding: 20px; border-bottom: 1px solid #dee2e6;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-header h3 { margin: 0; font-size: 18px; }
+        .modal-close {
+            background: none; border: none;
+            font-size: 28px; color: #999;
+            cursor: pointer; padding: 0;
+            width: 30px; height: 30px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 4px;
+        }
+        .modal-close:hover { background: #f0f0f0; color: #333; }
+        .modal-body { padding: 20px; }
+
+        /* ═══ Блок файлов v3.21.1 ═══ */
+        .files-header-row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 16px; padding-bottom: 8px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .files-header-row h2 { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+        .files-count { color: #999; font-size: 14px; font-weight: 400; }
+
+        .file-group { margin-bottom: 16px; }
+        .file-group-header {
+            font-size: 13px; font-weight: 600; color: #555;
+            margin-bottom: 6px; padding: 4px 0;
+        }
+        .file-group-hidden .file-group-header { color: #bbb; font-style: italic; }
+        .file-group-items { border: 1px solid #eee; border-radius: 6px; overflow: hidden; }
+
+        .file-row {
+            display: flex; align-items: center;
+            padding: 8px 12px; border-bottom: 1px solid #f0f0f0;
+            transition: background 0.15s;
+        }
+        .file-row:last-child { border-bottom: none; }
+        .file-row:hover { background: #f8f9fa; }
+        .file-row-icon { font-size: 20px; margin-right: 10px; flex-shrink: 0; }
+        .file-row-info { flex: 1; min-width: 0; }
+        .file-row-info .file-link {
+            color: #4a90e2; text-decoration: none;
+            font-weight: 500; font-size: 13px;
+        }
+        .file-row-info .file-link:hover { text-decoration: underline; }
+        .file-row-meta { font-size: 11px; color: #999; margin-top: 2px; }
+        .file-row-actions { display: flex; gap: 3px; flex-shrink: 0; margin-left: 8px; }
+
+        .btn-file-action {
+            display: inline-block; padding: 4px 8px; margin: 0;
+            border: none; border-radius: 4px; cursor: pointer;
+            font-size: 14px; text-decoration: none; transition: all 0.2s;
+        }
+        .btn-download { background: #28a745; color: white; }
+        .btn-download:hover { background: #218838; }
+        .btn-view { background: #17a2b8; color: white; }
+        .btn-view:hover { background: #138496; }
+        .btn-replace { background: #ffc107; color: #333; }
+        .btn-replace:hover { background: #e0a800; }
+        .btn-delete-file { background: #dc3545; color: white; }
+        .btn-delete-file:hover { background: #c82333; }
+
+        .version-tag {
+            display: inline-block; background: #e8f0fe; color: #4a90e2;
+            font-size: 10px; font-weight: 600; padding: 1px 5px;
+            border-radius: 3px; margin-left: 4px;
+        }
+        .version-badge {
+            display: inline-block; background: #fff3cd; color: #856404;
+            font-size: 10px; padding: 1px 5px; border-radius: 3px;
+            margin-left: 4px; cursor: pointer;
+        }
+        .version-badge:hover { background: #ffeeba; }
+
+        .no-files {
+            text-align: center; padding: 20px; color: #bbb;
+            font-style: italic; font-size: 13px;
+        }
+
+        .file-drop-zone {
+            border: 2px dashed #ced4da; border-radius: 8px;
+            background: #f8f9fa; transition: all 0.2s;
+        }
+        .file-drop-zone:hover { border-color: #4a90e2; }
+        .files-loading { text-align: center; padding: 20px; color: #999; }
+
+        .entity-tabs { display: flex; gap: 0; margin-bottom: 16px; }
+        .entity-tab {
+            padding: 8px 16px; font-size: 13px; font-weight: 500;
+            cursor: pointer; border: 1px solid #ddd; background: #f8f9fa;
+            color: #666; transition: all 0.15s; border-bottom: 2px solid transparent;
+        }
+        .entity-tab:first-child { border-radius: 6px 0 0 6px; }
+        .entity-tab:last-child { border-radius: 0 6px 6px 0; }
+        .entity-tab.active {
+            background: white; color: #333; border-bottom-color: #4a90e2; font-weight: 600;
+        }
+        .entity-tab:hover:not(.active) { background: #eee; }
+        .entity-files-panel { display: none; }
+        .entity-files-panel.active { display: block; }
+
         @media (max-width: 768px) {
             body { padding: 10px; }
             .form-grid, .form-grid.cols-3 { grid-template-columns: 1fr; }
@@ -389,7 +504,151 @@
 
 </form>
 
-<!-- ═══ Блок 5: Образцы по акту (только при редактировании) ═══ -->
+<!-- ═══ Блок 5: Файлы (v3.21.1) ═══ -->
+{% if act %}
+<div class="card" id="files-block">
+    <div class="files-header-row">
+        <h2>📁 Файлы
+            <span id="files-total-count" class="files-count"></span>
+        </h2>
+        {% if can_edit_files %}
+        <button type="button" class="btn btn-primary" onclick="openUploadModal()">
+            📤 Загрузить файл
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Табы: Акт / Договор -->
+    <div class="entity-tabs">
+        <div class="entity-tab active" onclick="switchTab('act')">
+            📋 Файлы акта <span id="act-files-count" class="files-count"></span>
+        </div>
+        <div class="entity-tab" onclick="switchTab('contract')">
+            📑 Файлы договора <span id="contract-files-count" class="files-count"></span>
+        </div>
+    </div>
+
+    <div id="act-files-panel" class="entity-files-panel active">
+        <div class="files-loading">Загрузка файлов...</div>
+    </div>
+
+    <div id="contract-files-panel" class="entity-files-panel">
+        <div class="files-loading">Загрузка файлов...</div>
+    </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО: Загрузка файла -->
+{% if can_edit_files %}
+<div id="upload-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3>📤 Загрузить файл</h3>
+            <button type="button" class="modal-close" onclick="closeUploadModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <form id="upload-form" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="category" value="CLIENT">
+                <input type="hidden" name="entity_type" id="upload-entity-type" value="acceptance_act">
+                <input type="hidden" name="entity_id" id="upload-entity-id" value="{{ act.id }}">
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Привязка</label>
+                    <select id="upload-target" onchange="updateUploadTarget(this.value)"
+                            style="width: 100%; padding: 8px 12px; border: 1px solid #ced4da; border-radius: 6px;">
+                        <option value="act">📋 К акту — {{ act.doc_number|default:act.document_name|default:"текущий" }}</option>
+                        <option value="contract">📑 К договору — № {{ act.contract.number }}</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Тип файла</label>
+                    <select name="file_type" id="upload-file-type"
+                            style="width: 100%; padding: 8px 12px; border: 1px solid #ced4da; border-radius: 6px;" required>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Файл</label>
+                    <div class="file-drop-zone" id="file-drop-zone">
+                        <input type="file" name="file" id="upload-file-input" required style="display: none;">
+                        <div id="drop-zone-text" style="text-align: center; padding: 20px; cursor: pointer;"
+                             onclick="document.getElementById('upload-file-input').click();">
+                            <div style="font-size: 32px; margin-bottom: 8px;">📁</div>
+                            <div>Нажмите или перетащите файл сюда</div>
+                        </div>
+                        <div id="drop-zone-file" style="display: none; text-align: center; padding: 15px;">
+                            <span id="selected-file-name" style="font-weight: 500;"></span>
+                            <span id="selected-file-size" style="color: #666; margin-left: 10px;"></span>
+                            <button type="button" style="margin-left: 10px; background: none; border: none; cursor: pointer; color: #dc3545;"
+                                    onclick="clearSelectedFile()">✕</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Описание <span style="color: #999; font-weight: 400;">(необязательно)</span></label>
+                    <input type="text" name="description" placeholder="Краткое описание файла"
+                           style="width: 100%; padding: 8px 12px; border: 1px solid #ced4da; border-radius: 6px;">
+                </div>
+
+                <div id="upload-error" style="display: none; color: #dc3545; margin-bottom: 10px; font-size: 14px;"></div>
+                <div id="upload-progress" style="display: none; margin-bottom: 10px;">
+                    <div style="background: #e9ecef; border-radius: 4px; overflow: hidden;">
+                        <div id="upload-progress-bar" style="height: 6px; background: #4a90e2; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeUploadModal()">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="upload-submit-btn">📤 Загрузить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО: Замена файла -->
+<div id="replace-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header">
+            <h3>🔄 Заменить файл</h3>
+            <button type="button" class="modal-close" onclick="closeReplaceModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <form id="replace-form" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="file_id" id="replace-file-id">
+
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                    <div style="font-weight: 600;">Заменяемый файл:</div>
+                    <div id="replace-file-info" style="color: #666; margin-top: 4px;"></div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600;">Новый файл</label>
+                    <input type="file" name="file" id="replace-file-input" required
+                           style="width: 100%; padding: 8px; border: 1px solid #ced4da; border-radius: 6px;">
+                </div>
+
+                <div style="background: #fff3cd; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px;">
+                    ⚠️ Предыдущая версия будет сохранена в истории.
+                </div>
+
+                <div id="replace-error" style="display: none; color: #dc3545; margin-bottom: 10px; font-size: 14px;"></div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeReplaceModal()">Отмена</button>
+                    <button type="submit" class="btn btn-primary">🔄 Заменить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- ═══ Блок 6: Образцы по акту (только при редактировании) ═══ -->
 {% if act and samples %}
 <div class="card">
     <h2>🧪 Образцы по акту ({{ samples|length }})</h2>
@@ -462,6 +721,361 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
+
+<!-- JS: Файловая система для актов v3.21.1 -->
+{% if act %}
+<script>
+(function() {
+    'use strict';
+
+    var ACT_ID = {{ act.id }};
+    var CONTRACT_ID = {{ act.contract_id }};
+    var CAN_EDIT = {{ can_edit_files|yesno:"true,false" }};
+
+    /* Типы файлов по привязке */
+    var FILE_TYPES = {
+        act: [
+            {value: 'ACT_SCAN', label: '📄 Скан акта'},
+            {value: 'ACT_FINANCE', label: '💰 Финансовый документ'},
+            {value: 'ACT_OTHER', label: '📎 Прочее по акту'}
+        ],
+        contract: [
+            {value: 'CONTRACT_SCAN', label: '📄 Скан договора'},
+            {value: 'CONTRACT_OTHER', label: '📎 Прочее по договору'}
+        ]
+    };
+
+    var FILE_TYPE_LABELS = {
+        'ACT_SCAN': '📄 Сканы акта',
+        'ACT_FINANCE': '💰 Финансовые документы',
+        'ACT_OTHER': '📎 Прочее по акту',
+        'CONTRACT_SCAN': '📄 Сканы договора',
+        'CONTRACT_OTHER': '📎 Прочее по договору'
+    };
+
+    var ACT_TYPE_ORDER = ['ACT_SCAN', 'ACT_FINANCE', 'ACT_OTHER'];
+    var CONTRACT_TYPE_ORDER = ['CONTRACT_SCAN', 'CONTRACT_OTHER'];
+
+    /* ═══ Табы ═══ */
+    var currentTab = 'act';
+
+    window.switchTab = function(tab) {
+        currentTab = tab;
+        document.querySelectorAll('.entity-tab').forEach(function(el) { el.classList.remove('active'); });
+        document.querySelectorAll('.entity-files-panel').forEach(function(el) { el.classList.remove('active'); });
+        document.querySelectorAll('.entity-tab')[tab === 'act' ? 0 : 1].classList.add('active');
+        document.getElementById(tab + '-files-panel').classList.add('active');
+    };
+
+    /* ═══ Загрузка файлов ═══ */
+    function loadAllFiles() {
+        loadFilesFor('acceptance_act', ACT_ID, 'act-files-panel', 'act-files-count', ACT_TYPE_ORDER);
+        loadFilesFor('contract', CONTRACT_ID, 'contract-files-panel', 'contract-files-count', CONTRACT_TYPE_ORDER);
+    }
+
+    function loadFilesFor(entityType, entityId, panelId, countId, typeOrder) {
+        fetch('/api/files/' + entityType + '/' + entityId + '/')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                renderFilesPanel(data, panelId, countId, typeOrder);
+                updateTotalCount();
+            })
+            .catch(function(err) {
+                console.error('Ошибка загрузки файлов:', err);
+                document.getElementById(panelId).innerHTML =
+                    '<div class="no-files">Ошибка загрузки файлов</div>';
+            });
+    }
+
+    function renderFilesPanel(data, panelId, countId, typeOrder) {
+        var container = document.getElementById(panelId);
+        var countEl = document.getElementById(countId);
+        var files = data.files || [];
+        var hiddenTypes = data.hidden_types || [];
+
+        countEl.textContent = files.length > 0 ? '(' + files.length + ')' : '';
+        container.setAttribute('data-count', files.length);
+
+        if (files.length === 0 && hiddenTypes.length === 0) {
+            container.innerHTML = '<div class="no-files">Файлы не загружены</div>';
+            return;
+        }
+
+        var groups = {};
+        files.forEach(function(f) {
+            if (!groups[f.file_type]) groups[f.file_type] = [];
+            groups[f.file_type].push(f);
+        });
+
+        var html = '';
+        typeOrder.forEach(function(type) {
+            if (groups[type]) html += renderFileGroup(type, groups[type]);
+        });
+
+        /* Типы без порядка */
+        Object.keys(groups).forEach(function(type) {
+            if (typeOrder.indexOf(type) === -1) html += renderFileGroup(type, groups[type]);
+        });
+
+        hiddenTypes.forEach(function(type) {
+            var label = FILE_TYPE_LABELS[type] || type;
+            html += '<div class="file-group file-group-hidden">' +
+                '<div class="file-group-header">🔒 ' + label + ' <span style="color: #999; font-size: 12px;">(нет доступа)</span></div></div>';
+        });
+
+        container.innerHTML = html;
+    }
+
+    function renderFileGroup(type, files) {
+        var label = FILE_TYPE_LABELS[type] || type;
+        var html = '<div class="file-group">' +
+            '<div class="file-group-header">' + label + '</div>' +
+            '<div class="file-group-items">';
+
+        files.forEach(function(f) {
+            var icon = f.is_image ? '🖼️' : (f.is_pdf ? '📄' : '📎');
+            var versionBadge = f.version_count > 1
+                ? '<span class="version-badge" title="История версий">📜 ' + f.version_count + '</span>' : '';
+            var versionTag = f.version > 1
+                ? '<span class="version-tag">v' + f.version + '</span>' : '';
+
+            html += '<div class="file-row" id="file-row-' + f.id + '">' +
+                '<div class="file-row-icon">' + icon + '</div>' +
+                '<div class="file-row-info">' +
+                    '<a href="/files/' + f.id + '/download/" class="file-link">' + escapeHtml(f.original_name) + '</a>' +
+                    versionTag + versionBadge +
+                    '<div class="file-row-meta">' +
+                        f.file_size + ' · ' + escapeHtml(f.uploaded_by) + ', ' + f.uploaded_at +
+                        (f.description ? ' · <em>' + escapeHtml(f.description) + '</em>' : '') +
+                    '</div>' +
+                '</div>' +
+                '<div class="file-row-actions">' +
+                    '<a href="/files/' + f.id + '/download/" class="btn-file-action btn-download" title="Скачать">⬇️</a>';
+
+            if (f.is_image || f.is_pdf) {
+                html += '<a href="/files/' + f.id + '/download/" target="_blank" class="btn-file-action btn-view" title="Просмотр">👁️</a>';
+            }
+            if (CAN_EDIT) {
+                html += '<button type="button" class="btn-file-action btn-replace" title="Заменить" ' +
+                    'onclick="openReplaceModal(' + f.id + ', \'' + escapeHtml(f.original_name) + '\', \'v' + f.version + '\', \'' + f.file_size + '\')">🔄</button>';
+                html += '<button type="button" class="btn-file-action btn-delete-file" title="Удалить" ' +
+                    'onclick="deleteFile(' + f.id + ', \'' + escapeHtml(f.original_name) + '\')">🗑️</button>';
+            }
+
+            html += '</div></div>';
+        });
+
+        html += '</div></div>';
+        return html;
+    }
+
+    function updateTotalCount() {
+        var actCount = parseInt(document.getElementById('act-files-panel').getAttribute('data-count') || '0');
+        var contractCount = parseInt(document.getElementById('contract-files-panel').getAttribute('data-count') || '0');
+        var total = actCount + contractCount;
+        document.getElementById('files-total-count').textContent = total > 0 ? '(' + total + ')' : '';
+    }
+
+    /* ═══ Загрузка файла ═══ */
+    window.openUploadModal = function() {
+        document.getElementById('upload-modal').style.display = 'flex';
+        document.getElementById('upload-error').style.display = 'none';
+        document.getElementById('upload-progress').style.display = 'none';
+        document.getElementById('upload-form').reset();
+        clearSelectedFile();
+        var target = document.getElementById('upload-target');
+        target.value = currentTab;
+        updateUploadTarget(currentTab);
+    };
+
+    window.closeUploadModal = function() {
+        document.getElementById('upload-modal').style.display = 'none';
+    };
+
+    window.updateUploadTarget = function(target) {
+        var entityType = target === 'contract' ? 'contract' : 'acceptance_act';
+        var entityId = target === 'contract' ? CONTRACT_ID : ACT_ID;
+        document.getElementById('upload-entity-type').value = entityType;
+        document.getElementById('upload-entity-id').value = entityId;
+
+        var select = document.getElementById('upload-file-type');
+        var types = FILE_TYPES[target] || [];
+        select.innerHTML = '';
+        types.forEach(function(t) {
+            var opt = document.createElement('option');
+            opt.value = t.value;
+            opt.textContent = t.label;
+            select.appendChild(opt);
+        });
+    };
+
+    window.clearSelectedFile = function() {
+        document.getElementById('upload-file-input').value = '';
+        document.getElementById('drop-zone-text').style.display = 'block';
+        document.getElementById('drop-zone-file').style.display = 'none';
+    };
+
+    function showSelectedFile(file) {
+        document.getElementById('drop-zone-text').style.display = 'none';
+        document.getElementById('drop-zone-file').style.display = 'block';
+        document.getElementById('selected-file-name').textContent = file.name;
+        document.getElementById('selected-file-size').textContent = formatFileSize(file.size);
+    }
+
+    /* Drag & drop */
+    var dropZone = document.getElementById('file-drop-zone');
+    var fileInput = document.getElementById('upload-file-input');
+    if (dropZone && fileInput) {
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) showSelectedFile(this.files[0]);
+        });
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#4a90e2'; this.style.background = '#e8f0fe';
+        });
+        dropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#ced4da'; this.style.background = '#f8f9fa';
+        });
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#ced4da'; this.style.background = '#f8f9fa';
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                showSelectedFile(e.dataTransfer.files[0]);
+            }
+        });
+    }
+
+    /* Отправка формы загрузки */
+    var uploadForm = document.getElementById('upload-form');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var formData = new FormData(this);
+            var errorEl = document.getElementById('upload-error');
+            var progressEl = document.getElementById('upload-progress');
+            var progressBar = document.getElementById('upload-progress-bar');
+            var submitBtn = document.getElementById('upload-submit-btn');
+
+            errorEl.style.display = 'none';
+            progressEl.style.display = 'block';
+            progressBar.style.width = '0%';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Загрузка...';
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/files/upload/');
+
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    progressBar.style.width = Math.round((e.loaded / e.total) * 100) + '%';
+                }
+            };
+
+            xhr.onload = function() {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '📤 Загрузить';
+                if (xhr.status === 200) {
+                    try {
+                        var resp = JSON.parse(xhr.responseText);
+                        if (resp.success) { closeUploadModal(); loadAllFiles(); }
+                        else {
+                            errorEl.textContent = resp.error || 'Ошибка';
+                            errorEl.style.display = 'block'; progressEl.style.display = 'none';
+                        }
+                    } catch(ex) {
+                        errorEl.textContent = 'Ошибка разбора ответа';
+                        errorEl.style.display = 'block'; progressEl.style.display = 'none';
+                    }
+                } else {
+                    try { errorEl.textContent = JSON.parse(xhr.responseText).error || 'Ошибка ' + xhr.status; }
+                    catch(ex) { errorEl.textContent = 'Ошибка ' + xhr.status; }
+                    errorEl.style.display = 'block'; progressEl.style.display = 'none';
+                }
+            };
+
+            xhr.onerror = function() {
+                submitBtn.disabled = false; submitBtn.textContent = '📤 Загрузить';
+                errorEl.textContent = 'Ошибка сети';
+                errorEl.style.display = 'block'; progressEl.style.display = 'none';
+            };
+
+            xhr.send(formData);
+        });
+    }
+
+    /* ═══ Замена файла ═══ */
+    window.openReplaceModal = function(fileId, fileName, version, fileSize) {
+        document.getElementById('replace-modal').style.display = 'flex';
+        document.getElementById('replace-file-id').value = fileId;
+        document.getElementById('replace-file-info').textContent = fileName + ' (' + version + ') — ' + fileSize;
+        document.getElementById('replace-error').style.display = 'none';
+        document.getElementById('replace-file-input').value = '';
+    };
+
+    window.closeReplaceModal = function() {
+        document.getElementById('replace-modal').style.display = 'none';
+    };
+
+    var replaceForm = document.getElementById('replace-form');
+    if (replaceForm) {
+        replaceForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var fileId = document.getElementById('replace-file-id').value;
+            var formData = new FormData(this);
+            var errorEl = document.getElementById('replace-error');
+
+            fetch('/files/' + fileId + '/replace/', { method: 'POST', body: formData })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) { closeReplaceModal(); loadAllFiles(); }
+                    else { errorEl.textContent = data.error || 'Ошибка'; errorEl.style.display = 'block'; }
+                })
+                .catch(function() { errorEl.textContent = 'Ошибка сети'; errorEl.style.display = 'block'; });
+        });
+    }
+
+    /* ═══ Удаление файла ═══ */
+    window.deleteFile = function(fileId, fileName) {
+        if (!confirm('Удалить файл "' + fileName + '"?')) return;
+        var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch('/files/' + fileId + '/delete/', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken, 'Content-Type': 'application/json' },
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) loadAllFiles();
+            else alert(data.error || 'Ошибка удаления');
+        })
+        .catch(function() { alert('Ошибка сети'); });
+    };
+
+    /* ═══ Утилиты ═══ */
+    function formatFileSize(bytes) {
+        var units = ['Б', 'КБ', 'МБ', 'ГБ'];
+        var i = 0, size = bytes;
+        while (size >= 1024 && i < units.length - 1) { size /= 1024; i++; }
+        return size.toFixed(1) + ' ' + units[i];
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    /* Инициализация */
+    document.addEventListener('DOMContentLoaded', function() {
+        loadAllFiles();
+        updateUploadTarget('act');
+    });
+
+})();
+</script>
+{% endif %}
 
 </body>
 </html>

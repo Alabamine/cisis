@@ -43,10 +43,13 @@ from .verification_views import (
 
 # Работа с файлами
 from .file_views import (
-    upload_sample_file,
-    download_sample_file,
-    view_sample_file,
-    delete_sample_file,
+      file_upload,
+      file_download,
+      file_thumbnail,
+      file_delete,
+      file_replace,
+      api_file_types,
+      api_entity_files,
 )
 
 # API эндпоинты
@@ -81,13 +84,18 @@ __all__ = [
     'verify_protocol',
 
     # Файлы
-    'upload_sample_file',
-    'download_sample_file',
-    'view_sample_file',
-    'delete_sample_file',
+      'file_upload',
+      'file_download',
+      'file_thumbnail',
+      'file_delete',
+      'file_replace',
+      'api_file_types',
+      'api_entity_files',
 
     # API
     'get_client_contracts',
 ]
 
 from .audit_views import audit_log_view
+
+from . import parameter_views

@@ -471,14 +471,14 @@ def _build_fields_data(request, sample):
             'working_days', 'sample_received_date', 'object_info',
             'object_id', 'cutting_direction', 'test_conditions',
             'material', 'preparation',
-            'manufacturing', 'manufacturing_deadline', 'workshop_notes', 'further_movement',
+            # ⭐ v3.20.0: manufacturing/moisture поля вынесены в кастомный блок шаблона
+            # 'manufacturing', 'manufacturing_deadline', 'workshop_notes', 'further_movement',
+            # 'cutting_standard', 'moisture_conditioning', 'moisture_sample',
             'determined_parameters',
             'sample_count', 'additional_sample_count',
             'notes', 'deadline',
             'report_type', 'pi_number',
             'uzk_required',
-            'cutting_standard',  # ⭐ v3.15.0
-            'moisture_conditioning', 'moisture_sample',  # ⭐ v3.15.0
             'registered_by', 'verified_by', 'verified_at',
             'replacement_protocol_required', 'replacement_pi_number',
             'admin_notes',
@@ -1101,6 +1101,17 @@ def sample_detail(request, sample_id):
         else:
             dep.is_accessible = (_check_sample_access(request.user, dep) is None)
 
+    _mfg_perm = PermissionChecker.get_user_permission(request.user, 'SAMPLES', 'manufacturing')
+    _mfg_frozen, _ = _is_field_frozen('manufacturing', request.user, sample, request=request)
+    can_edit_manufacturing = (_mfg_perm == 'EDIT' and not _mfg_frozen)
+
+    _mc_perm = PermissionChecker.get_user_permission(request.user, 'SAMPLES', 'moisture_conditioning')
+    _mc_frozen, _ = _is_field_frozen('moisture_conditioning', request.user, sample, request=request)
+    can_edit_moisture = (_mc_perm == 'EDIT' and not _mc_frozen)
+
+    show_manufacturing_block = _mfg_perm in ('VIEW', 'EDIT')
+    show_moisture_block = _mc_perm in ('VIEW', 'EDIT')
+
     return render(request, 'core/sample_detail.html', {
         'sample': sample,
         'fields_data': fields_data,
@@ -1121,10 +1132,14 @@ def sample_detail(request, sample_id):
         'protocol_verification_message': protocol_verification_message,
         'protocol_verification_info': protocol_verification_info,
         'can_view_audit': can_view_audit,
-        'moisture_sample': moisture_sample,  # ⭐ v3.15.0
-        'moisture_sample_ready': moisture_sample_ready,  # ⭐ v3.15.0
-        'can_view_moisture_sample': can_view_moisture_sample,  # ⭐ v3.15.0
-        'dependent_moisture_samples': dependent_moisture_samples,  # ⭐ v3.15.0
+        'moisture_sample': moisture_sample,
+        'moisture_sample_ready': moisture_sample_ready,
+        'can_view_moisture_sample': can_view_moisture_sample,
+        'dependent_moisture_samples': dependent_moisture_samples,
+        'can_edit_manufacturing': can_edit_manufacturing,  # ⭐ v3.20.0
+        'can_edit_moisture': can_edit_moisture,  # ⭐ v3.20.0
+        'show_manufacturing_block': show_manufacturing_block,  # ⭐ v3.20.0
+        'show_moisture_block': show_moisture_block,  # ⭐ v3.20.0
     })
 
 # ─────────────────────────────────────────────────────────────

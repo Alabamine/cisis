@@ -14,7 +14,7 @@ from core.models import (
     EquipmentMaintenance,
     StandardLaboratory,        # ⭐ v3.11.2
 )
-
+from core.models.parameters import Parameter, StandardParameter, SampleParameter
 
 # ═══════════════════════════════════════════════════════════════
 # ИНЛАЙНЫ
@@ -48,7 +48,11 @@ class EquipmentMaintenanceInline(admin.TabularInline):
     extra   = 1
     ordering = ['-maintenance_date']
 
-
+class StandardParameterInline(admin.TabularInline):
+    model = StandardParameter
+    extra = 1
+    fields = ('parameter', 'parameter_role', 'is_default', 'unit_override',
+              'test_conditions', 'precision', 'display_order')
 # ═══════════════════════════════════════════════════════════════
 # МОДЕЛИ
 # ═══════════════════════════════════════════════════════════════
@@ -93,3 +97,10 @@ class StandardAdmin(admin.ModelAdmin):
     list_filter   = ['is_active']
     search_fields = ['code', 'name', 'test_code']
     inlines       = [StandardAccreditationAreaInline, StandardLaboratoryInline]
+
+@admin.register(Parameter)
+class ParameterAdmin(admin.ModelAdmin):
+    list_display = ('name', 'unit', 'category', 'is_active', 'display_order')
+    list_filter = ('category', 'is_active')
+    search_fields = ('name', 'name_en')
+    ordering = ('display_order', 'name')

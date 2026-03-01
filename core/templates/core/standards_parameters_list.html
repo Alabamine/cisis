@@ -1,0 +1,305 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Справочник стандартов — CISIS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .page { max-width: 1200px; margin: 0 auto; }
+        .header { background: white; padding: 20px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .header h1 { font-size: 24px; color: #333; }
+        .header-actions { display: flex; gap: 10px; }
+        .back-link { color: #666; text-decoration: none; font-size: 14px; padding: 8px 16px; background: #f5f5f5; border-radius: 6px; }
+        .back-link:hover { background: #e8e8e8; }
+        .btn-add { padding: 8px 18px; background: #667eea; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .btn-add:hover { background: #5a6fd6; }
+        .user-info { color: #666; font-size: 14px; }
+
+        .filters-bar { background: white; padding: 14px 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+        .filters-bar input, .filters-bar select { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        .filters-bar input { flex: 1; min-width: 200px; max-width: 350px; }
+        .filters-bar select { min-width: 160px; }
+        .btn-search { padding: 8px 18px; background: #667eea; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .btn-search:hover { background: #5a6fd6; }
+        .btn-reset { color: #999; font-size: 13px; text-decoration: none; }
+        .cb-label { font-size: 13px; color: #666; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+
+        .std-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .std-table th { background: #f8f9fa; padding: 12px 16px; text-align: left; font-size: 12px; color: #6c757d; font-weight: 600; text-transform: uppercase; border-bottom: 2px solid #e9ecef; }
+        .std-table td { padding: 13px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #333; }
+        .std-table tr:hover { background: #f8f9ff; }
+        .std-table tr:last-child td { border-bottom: none; }
+        .std-table tr.inactive { opacity: 0.5; }
+
+        .std-code { font-weight: 600; color: #2d3748; }
+        .std-name { color: #555; font-size: 13px; }
+        .std-link { text-decoration: none; color: inherit; display: block; }
+        .std-link:hover .std-code { color: #667eea; }
+
+        .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+        .badge.total { background: #e8f0fe; color: #1a73e8; }
+        .badge.primary { background: #e6f4ea; color: #137333; }
+        .badge.auxiliary { background: #fef7e0; color: #b06000; }
+        .badge.empty { background: #f5f5f5; color: #999; }
+        .badge.inactive { background: #fce8e6; color: #c5221f; }
+        .badge.lab { background: #f3e8fd; color: #7b2cbf; font-size: 11px; }
+        .badges { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        .empty-state { background: white; padding: 60px; border-radius: 12px; text-align: center; color: #999; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+
+        /* Модальное окно создания стандарта */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-box { background: #fff; border-radius: 12px; padding: 24px; width: 520px; max-width: 95vw; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+        .modal-box h2 { font-size: 18px; margin: 0 0 18px; color: #333; }
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 12px; color: #555; margin-bottom: 4px; font-weight: 500; }
+        .form-group input, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box; }
+        .form-group input:focus, .form-group select:focus { border-color: #667eea; outline: none; box-shadow: 0 0 0 2px rgba(102,126,234,0.15); }
+        .form-row { display: flex; gap: 12px; }
+        .form-row .form-group { flex: 1; }
+        .form-hint { font-size: 11px; color: #999; margin-top: 3px; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee; }
+        .btn-cancel { padding: 8px 20px; background: #f5f5f5; color: #666; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .btn-cancel:hover { background: #e8e8e8; }
+        .btn-save { padding: 8px 20px; background: #667eea; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .btn-save:hover { background: #5a6fd6; }
+        .btn-save:disabled { background: #ccc; cursor: not-allowed; }
+
+        /* Чекбоксы M2M */
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0; }
+        .checkbox-group label { display: flex; align-items: center; gap: 5px; font-size: 13px; color: #444; cursor: pointer; padding: 4px 10px; border: 1px solid #e0e0e0; border-radius: 6px; }
+        .checkbox-group label:hover { border-color: #667eea; background: #f8f9ff; }
+        .checkbox-group input[type="checkbox"] { accent-color: #667eea; }
+
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 8px; color: #fff; font-size: 14px; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+        .toast.success { background: #137333; }
+        .toast.error { background: #c5221f; }
+        .toast.active { opacity: 1; }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="header">
+            <div class="header-top">
+                <h1>📚 Справочник стандартов</h1>
+                <div class="header-actions">
+                    {% if can_edit %}
+                    <button class="btn-add" onclick="openCreateModal()">＋ Добавить стандарт</button>
+                    {% endif %}
+                    <a href="{% url 'workspace_home' %}" class="back-link">← Рабочее пространство</a>
+                </div>
+            </div>
+            <div class="user-info">
+                {{ request.user.full_name }} ({{ request.user.get_role_display }})
+                {% if request.user.laboratory %} — {{ request.user.laboratory.name }}{% endif %}
+                · {{ total_count }} стандартов
+            </div>
+        </div>
+
+        <form class="filters-bar" method="get">
+            <input type="text" name="q" value="{{ search_query }}" placeholder="🔍 Поиск по коду или названию...">
+            <select name="lab" onchange="this.form.submit()">
+                <option value="">Все лаборатории</option>
+                {% for lab in laboratories %}
+                    <option value="{{ lab.id }}" {% if lab_filter == lab.id|stringformat:"d" %}selected{% endif %}>{{ lab.code_display }}</option>
+                {% endfor %}
+            </select>
+            <label class="cb-label">
+                <input type="checkbox" name="inactive" value="1" {% if show_inactive %}checked{% endif %} onchange="this.form.submit()">
+                Показать неактивные
+            </label>
+            <button type="submit" class="btn-search">Найти</button>
+            {% if search_query or lab_filter or show_inactive %}
+                <a href="{% url 'standards_list' %}" class="btn-reset">✕ Сбросить</a>
+            {% endif %}
+        </form>
+
+        {% if standards %}
+        <table class="std-table">
+            <thead>
+                <tr>
+                    <th style="width: 180px;">Код</th>
+                    <th>Название</th>
+                    <th style="width: 140px;">Лаборатории</th>
+                    <th style="width: 260px;">Показатели</th>
+                    <th style="width: 70px;">Статус</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for std in standards %}
+                <tr class="{% if not std.is_active %}inactive{% endif %}">
+                    <td>
+                        <a href="{% url 'standard_detail' std.id %}" class="std-link">
+                            <span class="std-code">{{ std.code }}</span>
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{% url 'standard_detail' std.id %}" class="std-link">
+                            <span class="std-name">{{ std.name|default:"—" }}</span>
+                        </a>
+                    </td>
+                    <td>
+                        <div class="badges">
+                            {% for sl in std.standardlaboratory_set.all %}
+                                <span class="badge lab">{{ sl.laboratory.code_display }}</span>
+                            {% empty %}
+                                <span style="color: #ccc; font-size: 12px;">—</span>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td>
+                        <div class="badges">
+                            {% if std.params_total > 0 %}
+                                <span class="badge total">{{ std.params_total }}</span>
+                                {% if std.params_primary > 0 %}<span class="badge primary">{{ std.params_primary }} осн.</span>{% endif %}
+                                {% if std.params_auxiliary > 0 %}<span class="badge auxiliary">{{ std.params_auxiliary }} всп.</span>{% endif %}
+                            {% else %}
+                                <span class="badge empty">Нет показателей</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if std.is_active %}
+                            <span style="color: #137333; font-size: 13px;">✓ Акт.</span>
+                        {% else %}
+                            <span class="badge inactive">Неакт.</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <div class="icon">📚</div>
+            <p>Стандарты не найдены</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Модалка создания стандарта -->
+    <div class="modal-overlay" id="stdModal">
+        <div class="modal-box">
+            <h2 id="stdModalTitle">Добавить стандарт</h2>
+            <input type="hidden" id="stdId" value="">
+
+            <div class="form-group">
+                <label>Код стандарта *</label>
+                <input type="text" id="stdCode" placeholder="ГОСТ 11262-2017">
+            </div>
+            <div class="form-group">
+                <label>Название</label>
+                <input type="text" id="stdName" placeholder="Определение предельной прочности при растяжении">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Тип испытания</label>
+                    <input type="text" id="stdTestType" placeholder="Механические">
+                </div>
+                <div class="form-group">
+                    <label>Код испытания</label>
+                    <input type="text" id="stdTestCode" placeholder="MI-001">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Лаборатории</label>
+                <div class="checkbox-group" id="stdLabsGroup">
+                    {% for lab in laboratories %}
+                    <label><input type="checkbox" value="{{ lab.id }}" class="std-lab-cb"> {{ lab.code_display }}</label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% if all_areas %}
+            <div class="form-group">
+                <label>Области аккредитации</label>
+                <div class="checkbox-group" id="stdAreasGroup">
+                    {% for area in all_areas %}
+                    <label><input type="checkbox" value="{{ area.id }}" class="std-area-cb"> {{ area.name }}</label>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeStdModal()">Отмена</button>
+                <button class="btn-save" id="btnStdSave" onclick="saveStandard()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    const CSRF = '{{ csrf_token }}';
+
+    function openCreateModal() {
+        document.getElementById('stdModalTitle').textContent = 'Добавить стандарт';
+        document.getElementById('stdId').value = '';
+        document.getElementById('stdCode').value = '';
+        document.getElementById('stdName').value = '';
+        document.getElementById('stdTestType').value = '';
+        document.getElementById('stdTestCode').value = '';
+        document.querySelectorAll('.std-lab-cb').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.std-area-cb').forEach(cb => cb.checked = false);
+        document.getElementById('stdModal').classList.add('active');
+        document.getElementById('stdCode').focus();
+    }
+
+    function closeStdModal() { document.getElementById('stdModal').classList.remove('active'); }
+
+    function saveStandard() {
+        const code = document.getElementById('stdCode').value.trim();
+        if (!code) { showToast('Код стандарта обязателен', 'error'); return; }
+
+        const labIds = [];
+        document.querySelectorAll('.std-lab-cb:checked').forEach(cb => labIds.push(parseInt(cb.value)));
+        const areaIds = [];
+        document.querySelectorAll('.std-area-cb:checked').forEach(cb => areaIds.push(parseInt(cb.value)));
+
+        const btn = document.getElementById('btnStdSave');
+        btn.disabled = true; btn.textContent = 'Сохранение...';
+
+        fetch('/api/standards/save/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+            body: JSON.stringify({
+                standard_id: document.getElementById('stdId').value || null,
+                code: code,
+                name: document.getElementById('stdName').value.trim(),
+                test_type: document.getElementById('stdTestType').value.trim(),
+                test_code: document.getElementById('stdTestCode').value.trim(),
+                laboratory_ids: labIds,
+                area_ids: areaIds,
+            }),
+        }).then(r => r.json()).then(data => {
+            btn.disabled = false; btn.textContent = 'Сохранить';
+            if (data.error) { showToast(data.error, 'error'); return; }
+            showToast('Стандарт сохранён', 'success');
+            closeStdModal();
+            if (data.redirect_url) {
+                setTimeout(() => window.location.href = data.redirect_url, 400);
+            } else {
+                setTimeout(() => location.reload(), 400);
+            }
+        }).catch(() => { btn.disabled = false; btn.textContent = 'Сохранить'; showToast('Ошибка', 'error'); });
+    }
+
+    function showToast(msg, type) {
+        const t = document.getElementById('toast');
+        t.textContent = msg; t.className = `toast ${type} active`;
+        setTimeout(() => t.classList.remove('active'), 3000);
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeStdModal(); });
+    document.getElementById('stdModal').addEventListener('click', function(e) { if (e.target === this) closeStdModal(); });
+    </script>
+</body>
+</html>
