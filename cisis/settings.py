@@ -137,6 +137,6 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
-# LOGIN_URL = '/admin/login/'
-LOGIN_URL = '/workspace/login/'
+LOGIN_URL = '/admin/login/'
+# LOGIN_URL = '/workspace/login/'
 LOGIN_REDIRECT_URL = '/workspace/'
