@@ -38,7 +38,7 @@ from .views.act_views import (
 )
 
 from core.views import parameter_views
-
+from .views.auth_views import workspace_login
 urlpatterns = [
     path('permissions/', permissions_views.manage_permissions, name='manage_permissions'),
     path('workspace/', workspace_home, name='workspace_home'),
@@ -58,6 +58,7 @@ urlpatterns = [
     path('api/search-standards/', search_standards, name='search_standards'),
     path('api/search-moisture-samples/', search_moisture_samples, name='search_moisture_samples'),  # ⭐ v3.15.0
     path('logout/', logout_view, name='workspace_logout'),
+    path('workspace/login/', workspace_login, name='workspace_login'),
 
     # ⭐ v3.6.0: Генератор этикеток
     path('workspace/labels/', label_views.labels_page, name='labels_page'),

@@ -57,6 +57,7 @@ from .api_views import (
     get_client_contracts,
 )
 
+from .auth_views import workspace_login
 
 __all__ = [
     # Управление правами
