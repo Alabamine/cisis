@@ -148,7 +148,7 @@ class User(models.Model):
         full = ' '.join(p for p in parts if p)
         return f'{full} ({self.username})'
 
-    @property
+
     @property
     def full_name(self):
         parts = [self.last_name, self.first_name, self.sur_name]
