@@ -37,11 +37,14 @@ from .user import (
 from .equipment import (
     Equipment,
     EquipmentType,
-    EquipmentOwnership,
     EquipmentStatus,
     EquipmentAccreditationArea,
     EquipmentMaintenance,
     MaintenanceType,
+    EquipmentMaintenancePlan,   # ⭐ v3.24.0
+    EquipmentMaintenanceLog,    # ⭐ v3.24.0
+    MaintenanceFrequencyUnit,   # ⭐ v3.24.0
+    MaintenanceLogStatus,       # ⭐ v3.24.0
 )
 
 # 5. Образцы (зависят от всех предыдущих)
@@ -85,6 +88,7 @@ from .logs import (
 from .files import File, FileTypeDefault, FileVisibilityRule, PersonalFolderAccess
 
 from .parameters import Parameter, StandardParameter, SampleParameter
+
 # ═══════════════════════════════════════════════════════════════════
 # __all__ — явно указываем что экспортируется при "from core.models import *"
 # ═══════════════════════════════════════════════════════════════════
@@ -115,11 +119,14 @@ __all__ = [
     # Оборудование
     'Equipment',
     'EquipmentType',
-    'EquipmentOwnership',
     'EquipmentStatus',
     'EquipmentAccreditationArea',
     'EquipmentMaintenance',
     'MaintenanceType',
+    'EquipmentMaintenancePlan',   # ⭐ v3.24.0
+    'EquipmentMaintenanceLog',    # ⭐ v3.24.0
+    'MaintenanceFrequencyUnit',   # ⭐ v3.24.0
+    'MaintenanceLogStatus',       # ⭐ v3.24.0
 
     # Образцы
     'Sample',
@@ -152,7 +159,15 @@ __all__ = [
     'TimeLog',
 
     # Файлы
-    'SampleFile',
+    'File',
+    'FileTypeDefault',
+    'FileVisibilityRule',
+    'PersonalFolderAccess',
+
+    # Параметры
+    'Parameter',
+    'StandardParameter',
+    'SampleParameter',
 ]
 
 from .audit_log import AuditLog

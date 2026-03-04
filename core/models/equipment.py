@@ -3,6 +3,8 @@
 - Equipment (Оборудование)
 - EquipmentAccreditationArea (посредник M2M)
 - EquipmentMaintenance (История обслуживания)
+- EquipmentMaintenancePlan (Планы ТО) ⭐ v3.24.0
+- EquipmentMaintenanceLog (Журнал ТО) ⭐ v3.24.0
 """
 
 from django.db import models
@@ -13,15 +15,9 @@ from django.db import models
 # =============================================================================
 
 class EquipmentType(models.TextChoices):
-    MEASURING  = 'MEASURING',  'Средство измерения (СИ)'
-    TESTING    = 'TESTING',    'Испытательное оборудование (ИО)'
-    AUXILIARY  = 'AUXILIARY',  'Вспомогательное оборудование (ВО)'
-
-
-class EquipmentOwnership(models.TextChoices):
-    OWN       = 'OWN',       'Своё'
-    RENTED    = 'RENTED',    'Аренда'
-    FREE_USE  = 'FREE_USE',  'Безвозмездное пользование'
+    MEASURING  = 'СИ',  'Средство измерения (СИ)'
+    TESTING    = 'ИО',  'Испытательное оборудование (ИО)'
+    AUXILIARY  = 'ВО',  'Вспомогательное оборудование (ВО)'
 
 
 class EquipmentStatus(models.TextChoices):
@@ -37,19 +33,33 @@ class MaintenanceType(models.TextChoices):
     REPAIR       = 'REPAIR',       'Ремонт'
 
 
+class MaintenanceFrequencyUnit(models.TextChoices):
+    DAY   = 'DAY',   'День'
+    WEEK  = 'WEEK',  'Неделя'
+    MONTH = 'MONTH', 'Месяц'
+    YEAR  = 'YEAR',  'Год'
+
+
+class MaintenanceLogStatus(models.TextChoices):
+    COMPLETED = 'COMPLETED', 'Выполнено'
+    SKIPPED   = 'SKIPPED',   'Пропущено'
+    PARTIAL   = 'PARTIAL',   'Частично'
+    OVERDUE   = 'OVERDUE',   'Просрочено'
+
+
 # =============================================================================
 # ОБОРУДОВАНИЕ
 # =============================================================================
 
 class Equipment(models.Model):
     # Основные идентификаторы
-    accounting_number   = models.CharField(max_length=50, unique=True)
+    accounting_number   = models.CharField(max_length=50)
     equipment_type      = models.CharField(max_length=20, choices=EquipmentType.choices)
     name                = models.CharField(max_length=200)
-    inventory_number    = models.CharField(max_length=50, unique=True)
+    inventory_number    = models.CharField(max_length=50)
 
     # Принадлежность
-    ownership            = models.CharField(max_length=20, default=EquipmentOwnership.OWN, choices=EquipmentOwnership.choices)
+    ownership            = models.CharField(max_length=200)
     ownership_doc_number = models.CharField(max_length=200, default='', blank=True)
 
     # Производитель
@@ -60,7 +70,7 @@ class Equipment(models.Model):
 
     # Техническая документация
     technical_documentation = models.TextField(default='', blank=True)
-    intended_use            = models.CharField(max_length=200, default='', blank=True)
+    intended_use            = models.TextField(default='', blank=True)
     metrology_doc           = models.TextField(default='', blank=True)
     technical_specs         = models.TextField(default='', blank=True)
     software                = models.TextField(default='', blank=True)
@@ -172,3 +182,93 @@ class EquipmentMaintenance(models.Model):
 
     def __str__(self):
         return f'{self.maintenance_date} — {self.get_maintenance_type_display()} — {self.equipment}'
+
+
+# =============================================================================
+# ПЛАНЫ ПЛАНОВОГО ТО ⭐ v3.24.0
+# =============================================================================
+
+class EquipmentMaintenancePlan(models.Model):
+    equipment              = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name='maintenance_plans')
+    name                   = models.CharField(max_length=300)
+
+    # Периодичность: календарная часть
+    frequency_count        = models.IntegerField(null=True, blank=True)
+    frequency_unit         = models.CharField(max_length=10, choices=MaintenanceFrequencyUnit.choices, null=True, blank=True)
+    frequency_period_value = models.IntegerField(null=True, blank=True)
+
+    # Периодичность: условие
+    frequency_condition    = models.TextField(default='', blank=True)
+    is_condition_based     = models.BooleanField(default=False)
+
+    # Дополнительно
+    next_due_date          = models.DateField(null=True, blank=True)
+    is_active              = models.BooleanField(default=True)
+    notes                  = models.TextField(default='', blank=True)
+    created_at             = models.DateTimeField(auto_now_add=True)
+    updated_at             = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'equipment_maintenance_plans'
+        managed  = False
+        ordering = ['equipment', 'name']
+        verbose_name        = 'План ТО'
+        verbose_name_plural = 'Планы ТО'
+
+    def __str__(self):
+        return f'{self.equipment} — {self.name}'
+
+    def frequency_display(self):
+        """Человекочитаемое описание периодичности."""
+        if self.is_condition_based and not self.frequency_count:
+            return self.frequency_condition or 'По условию'
+        parts = []
+        if self.frequency_count and self.frequency_unit and self.frequency_period_value:
+            unit_map = {'DAY': 'день', 'WEEK': 'неделю', 'MONTH': 'месяц', 'YEAR': 'год'}
+            unit = unit_map.get(self.frequency_unit, self.frequency_unit)
+            if self.frequency_period_value == 1:
+                parts.append(f'{self.frequency_count} раз в {unit}')
+            else:
+                parts.append(f'{self.frequency_count} раз в {self.frequency_period_value} {unit}(ев)')
+        if self.is_condition_based and self.frequency_condition:
+            parts.append(f'({self.frequency_condition})')
+        return ', '.join(parts) if parts else '—'
+
+
+# =============================================================================
+# ЖУРНАЛ ВЫПОЛНЕНИЯ ТО ⭐ v3.24.0
+# =============================================================================
+
+class EquipmentMaintenanceLog(models.Model):
+    plan           = models.ForeignKey(EquipmentMaintenancePlan, on_delete=models.CASCADE, related_name='logs')
+    performed_date = models.DateField()
+    performed_by   = models.ForeignKey(
+        'User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='maintenance_logs_performed',
+        db_column='performed_by_id',
+    )
+    verified_by    = models.ForeignKey(
+        'User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='maintenance_logs_verified',
+        db_column='verified_by_id',
+    )
+    status         = models.CharField(max_length=20, default=MaintenanceLogStatus.COMPLETED, choices=MaintenanceLogStatus.choices)
+    verified_date  = models.DateField(null=True, blank=True)
+    notes          = models.TextField(default='', blank=True)
+    created_at     = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'equipment_maintenance_logs'
+        managed  = False
+        ordering = ['-performed_date']
+        verbose_name        = 'Запись журнала ТО'
+        verbose_name_plural = 'Журнал ТО'
+
+    def __str__(self):
+        return f'{self.performed_date} — {self.plan} — {self.get_status_display()}'
