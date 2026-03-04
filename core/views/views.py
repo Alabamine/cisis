@@ -99,6 +99,7 @@ def workspace_home(request):
             'icon': '⚙️',
             'description': 'Панель администратора',
             'url': '/admin/',
+            'url_type': 'path',
         })
 
     return render(request, 'core/workspace_home.html', {

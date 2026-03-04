@@ -14,7 +14,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-
   # === Django (Gunicorn) ===
   web:
     build: .
@@ -23,15 +22,18 @@ services:
       - static_files:/app/staticfiles
       - media_files:/app/media
     environment:
-      - DATABASE_URL=postgresql://cisis_user:${DB_PASSWORD:-ChangeMeNow2026!}@db:5432/cisis
       - DJANGO_SETTINGS_MODULE=cisis.settings
       - SECRET_KEY=${SECRET_KEY:-super-secret-key-change-me-in-production}
       - DEBUG=False
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-*}
+      - DB_HOST=db
+      - DB_NAME=cisis
+      - DB_USER=cisis_user
+      - DB_PASSWORD=${DB_PASSWORD:-ChangeMeNow2026!}
+      - DB_PORT=5432
     depends_on:
       db:
         condition: service_healthy
-
   # === Nginx (reverse proxy + статика) ===
   nginx:
     image: nginx:alpine
@@ -44,7 +46,6 @@ services:
       - media_files:/app/media:ro
     depends_on:
       - web
-
 volumes:
   pgdata:
   static_files:

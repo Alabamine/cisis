@@ -123,7 +123,7 @@
     {% if journals %}
     <div class="journals-grid">
         {% for journal in journals %}
-        <a href="{% url journal.url %}" class="journal-card">
+        <a href="{% if journal.url_type == 'path' %}{{ journal.url }}{% else %}{% url journal.url %}{% endif %}" class="journal-card">
             <div class="journal-icon">{{ journal.icon }}</div>
             <div class="journal-name">{{ journal.name }}</div>
             <div class="journal-description">{{ journal.description }}</div>
