@@ -219,4 +219,10 @@ WHERE NOT EXISTS (
       AND column_id  = (SELECT id FROM journal_columns WHERE journal_id = (SELECT id FROM journals WHERE code = 'ANALYTICS') AND code = 'access')
 );
 
+UPDATE standard_laboratories SET laboratory_id = (SELECT id FROM laboratories WHERE code_display = 'МИ' LIMIT 1) WHERE laboratory_id = 1;
+UPDATE standard_laboratories SET laboratory_id = (SELECT id FROM laboratories WHERE code_display = 'ТА' LIMIT 1) WHERE laboratory_id = 3;
+UPDATE standard_laboratories SET laboratory_id = (SELECT id FROM laboratories WHERE code_display = 'ХА' LIMIT 1) WHERE laboratory_id = 7;
+UPDATE standard_laboratories SET laboratory_id = (SELECT id FROM laboratories WHERE code_display = 'УКИ' LIMIT 1) WHERE laboratory_id = 8;
+UPDATE standard_laboratories SET laboratory_id = (SELECT id FROM laboratories WHERE code_display = 'МАС' LIMIT 1) WHERE laboratory_id = 9;
+
 COMMIT;
