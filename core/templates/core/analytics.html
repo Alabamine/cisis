@@ -1,0 +1,208 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Аналитика</title>
+    <link rel="stylesheet" href="{% static 'dashboard/css/styles.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.2/dist/axios.min.js"></script>
+</head>
+<body>
+ 
+
+        <!-- Основной контент -->
+        <main class="main-content">
+            <!-- Шапка -->
+            <header class="header">
+                <div class="header-left">
+                    <h1 id="page-title">📊 Дашборд центра испытаний</h1>
+                    <div class="user-info">
+        {{ user.full_name }} ({{ user.get_role_display }})
+        {% if user.laboratory %} — {{ user.laboratory.name }}{% endif %}
+    </div>
+                    
+                      
+                    </div>
+                </div>
+                
+                <div class="header-right">
+                    <div class="date-range">
+                        <select id="period-select">
+                            <option value="7">Последние 7 дней</option>
+                            <option value="30" selected>Последние 30 дней</option>
+                            <option value="90">Последние 3 месяца</option>
+                            <option value="180">Последние 6 месяцев</option>
+                            <option value="365">Последний год</option>
+                        </select>
+                            <!-- НОВЫЙ ФИЛЬТР ПО ЛАБОРАТОРИЯМ -->
+                        <select id="lab-select">
+                            <option value="0">Загрузка лабораторий...</option>
+                        </select>
+                        
+
+
+                    </div>
+                    
+
+                
+
+                    
+                    <button class="btn-export" id="export-btn">
+                        <i class="fas fa-download"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- KPI Карточки -->
+            <div class="kpi-grid" id="kpi-cards">
+                <!-- Заполняется JS -->
+            </div>
+
+            <!-- Графики и таблицы -->
+            <div class="dashboard-grid">
+                <!-- Трудоемкость по месяцам -->
+                <div class="chart-card" id="monthly-chart-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-chart-line"></i> Трудоемкость по месяцам</h3>
+                        <div class="card-actions">
+                            <button class="btn-icon"><i class="fas fa-expand"></i></button>
+                            <button class="btn-icon"><i class="fas fa-download"></i></button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Распределение по лабораториям -->
+                <div class="chart-card" id="lab-chart-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-pie-chart"></i> Образцы по лабораториям</h3>
+                        <div class="card-actions">
+                            <button class="btn-icon"><i class="fas fa-expand"></i></button>
+                            <button class="btn-icon"><i class="fas fa-download"></i></button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="labChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Статусы образцов -->
+                <div class="chart-card" id="status-chart-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-tasks"></i> Статусы образцов</h3>
+                        <div class="card-actions">
+                            <button class="btn-icon"><i class="fas fa-expand"></i></button>
+                            <button class="btn-icon"><i class="fas fa-download"></i></button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Динамика регистраций -->
+                <div class="chart-card" id="trend-chart-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-chart-bar"></i> Динамика регистраций</h3>
+                        <div class="card-actions">
+                            <button class="btn-icon"><i class="fas fa-expand"></i></button>
+                            <button class="btn-icon"><i class="fas fa-download"></i></button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Загрузка оборудования и срочные задачи -->
+            <div class="dashboard-grid">
+                <!-- Топ оборудования -->
+                <div class="table-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-microscope"></i> Загрузка оборудования (топ-10)</h3>
+                    </div>
+                    <div class="card-body">
+                        <table class="data-table" id="equipment-table">
+                            <thead>
+                                <tr>
+                                    <th>Оборудование</th>
+                                    <th>Лаборатория</th>
+                                    <th>Использований</th>
+                                    <th>Последнее</th>
+                                    <th>Активность</th>
+                                </tr>
+                            </thead>
+                            <tbody id="equipment-tbody">
+                                <tr><td colspan="5">Загрузка...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Срочные задачи -->
+                <div class="table-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Срочные задачи</h3>
+                    </div>
+                    <div class="card-body">
+                        <table class="data-table" id="urgent-table">
+                            <thead>
+                                <tr>
+                                    <th>Шифр</th>
+                                    <th>Клиент</th>
+                                    <th>Дедлайн</th>
+                                    <th>Статус</th>
+                                    <th>Ответственный</th>
+                                </tr>
+                            </thead>
+                            <tbody id="urgent-tbody">
+                                <tr><td colspan="5">Загрузка...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+         <!-- Производительность сотрудников -->
+<div class="table-card full-width">
+    <div class="card-header">
+        <h3><i class="fas fa-users"></i> Сотрудники</h3>
+    </div>
+    <div class="card-body">
+        <table class="data-table" id="employees-table">
+            <thead>
+                <tr>
+                    <th>Фамилия и имя</th>
+                    <th>Роль</th>
+                    <th>Лаборатория</th>
+                    <th class="sortable" data-sort="samples">
+                        Испытано образцов 
+                        <span class="sort-icon">↕️</span>
+                    </th>
+                    <th class="sortable" data-sort="protocols">
+                        Протоколов 
+                        <span class="sort-icon">↕️</span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody id="employees-tbody">
+                <tr><td colspan="5" style="text-align: center;">Загрузка...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+     <script>
+        // Используем API через прокси
+        const API_URL = '';  // пусто, так как используем прокси
+    </script>
+    <script src="{% static 'dashboard/js/dashboard.js' %}"></script>
+</body>
+</html>

@@ -43,3 +43,4 @@ __pycache__/
 cisis_dump.sql
 sql_migrations/incremental/*_data.sql
 sql_migrations/data/
+core/migrations/__pycache__/
