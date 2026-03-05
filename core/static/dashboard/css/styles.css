@@ -1,0 +1,264 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f5f5f5;
+    padding: 20px;
+}
+
+.app {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Шапка */
+.header {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.header h1 {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.last-update {
+    color: #666;
+    font-size: 14px;
+}
+
+/* Кнопки */
+.header-right {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+}
+
+select, button {
+    padding: 8px 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+button {
+    background: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #0056b3;
+}
+
+/* KPI карточки */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.kpi-card {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.kpi-label {
+    color: #413f3f;
+    font-size: 14px;
+    margin-bottom: 5px;
+    text-align: center;
+
+}
+
+.kpi-value {
+    font-size: 28px;
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+}
+
+/* Графики */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.chart-card, .table-card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 15px 20px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.card-header h3 {
+    color: #333;
+    font-size: 16px;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* Таблицы */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th {
+    background: #f8f9fa;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.data-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.data-table tr:hover {
+    background: #f8f9fa;
+}
+
+/* Бейджи */
+.badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: normal;
+}
+
+.badge-success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.badge-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.badge-danger {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.badge-info {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+
+/* Ограничиваем ширину всей сетки */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(400px, 650px)) !important;
+    gap: 30px;
+    max-width: 1350px !important;  /* почти на весь экран */
+    margin: 0 auto 25px auto !important;
+    justify-content: center;
+}
+
+/* Уменьшаем высоту карточек с графиками */
+.chart-card .card-body {
+    height: 280px !important;  /* было 350-400px */
+    padding: 12px;
+}
+
+/* Уменьшаем сами графики */
+#monthlyChart,
+#labChart,
+#statusChart,
+#trendChart {
+    width: 100% !important;
+    height: 220px !important;  /* было 280-300px */
+    max-height: 220px;
+}
+
+/* Уменьшаем отступы в заголовках */
+.card-header {
+    padding: 12px 16px !important;
+}
+
+.card-header h3 {
+    font-size: 15px !important;
+}
+
+.card-header h3 i {
+    font-size: 16px !important;
+}
+
+/* Уменьшаем сетку графиков */
+.dashboard-grid {
+    gap: 15px !important;  /* было 20-25px */
+    margin-bottom: 20px !important;
+}
+
+/* Уменьшаем размер иконок в углах */
+.btn-icon {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 13px !important;
+}
+
+/* Адаптация для мобильных */
+@media (max-width: 768px) {
+    .chart-card .card-body {
+        height: 250px !important;
+    }
+    
+    #monthlyChart,
+    #labChart,
+    #statusChart,
+    #trendChart {
+        height: 200px !important;
+    }
+}
+.header h1 { font-size: 24px; color: #333; margin-bottom: 10px; }
+.user-info { color: #666; font-size: 14px; }
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .kpi-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .header-right {
+        flex-direction: column;
+    }
+}
+

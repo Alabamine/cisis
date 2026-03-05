@@ -64,6 +64,15 @@ WORKSPACE_CARDS = [
         'journal_code': 'SAMPLES',
         'requires_column': 'parameters_management',
     },
+
+    {
+    'name': 'Аналитика',
+    'icon': '📊',
+    'url': 'analytics',
+    'description': 'Статистика по центру',
+    'journal_code': 'ANALYTICS',
+    'requires_column': 'access'
+    }, 
 ]
 
 

@@ -39,6 +39,13 @@ from .views.act_views import (
 
 from core.views import parameter_views
 from .views.auth_views import workspace_login
+from .views.analytics_views import (
+    analytics_view, api_laboratories, api_kpi,
+    api_monthly_labor, api_laboratory_distribution,
+    api_status_distribution, api_daily_registrations,
+    api_employee_stats,
+)
+
 urlpatterns = [
     path('permissions/', permissions_views.manage_permissions, name='manage_permissions'),
     path('workspace/', workspace_home, name='workspace_home'),
@@ -105,4 +112,38 @@ urlpatterns = [
     path('api/parameters/search/', parameter_views.api_parameter_search, name='api_parameter_search'),
     path('api/parameters/create/', parameter_views.api_parameter_create, name='api_parameter_create'),
     path('api/parameters/reorder/', parameter_views.api_parameter_reorder, name='api_parameter_reorder'),
+
+    # ── Аналитика ──────────────────────────────────────────
+    path('workspace/analytics/',
+         analytics_view,
+         name='analytics'),
+
+    # API-эндпоинты аналитики
+    path('workspace/analytics/api/laboratories',
+         api_laboratories,
+         name='analytics_api_laboratories'),
+
+    path('workspace/analytics/api/kpi',
+         api_kpi,
+         name='analytics_api_kpi'),
+
+    path('workspace/analytics/api/monthly-labor',
+         api_monthly_labor,
+         name='analytics_api_monthly_labor'),
+
+    path('workspace/analytics/api/laboratory-distribution',
+         api_laboratory_distribution,
+         name='analytics_api_lab_distribution'),
+
+    path('workspace/analytics/api/status-distribution',
+         api_status_distribution,
+         name='analytics_api_status_distribution'),
+
+    path('workspace/analytics/api/daily-registrations',
+         api_daily_registrations,
+         name='analytics_api_daily_registrations'),
+
+    path('workspace/analytics/api/employee-stats',
+         api_employee_stats,
+         name='analytics_api_employee_stats'),
 ]
