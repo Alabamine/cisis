@@ -36,6 +36,7 @@ from core.models.parameters import (
 from core.permissions import PermissionChecker
 from core.views.audit import log_action
 from core.models.base import AccreditationArea
+from django.db import connection
 
 
 # ============================================================
@@ -182,6 +183,56 @@ def standard_detail(request, standard_id):
     categories = ParameterCategory.choices
     roles = ParameterRole.choices
 
+    # ── Допущенные сотрудники (через области аккредитации) ⭐ v3.28.0 ──
+    admitted_by_area = []
+    excluded_user_ids = set()
+    non_default_area_ids = [a_id for a_id in standard_area_ids
+                            if a_id in {a.id for a in all_areas if not a.is_default}]
+
+    if non_default_area_ids:
+        # Исключения для этого стандарта
+        with connection.cursor() as cur:
+            cur.execute(
+                "SELECT user_id FROM user_standard_exclusions WHERE standard_id = %s",
+                [standard.id]
+            )
+            excluded_user_ids = {row[0] for row in cur.fetchall()}
+
+        with connection.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    aa.id AS area_id, aa.name AS area_name,
+                    u.id AS user_id, u.last_name, u.first_name, u.sur_name,
+                    l.code_display AS lab_display
+                FROM user_accreditation_areas uaa
+                JOIN accreditation_areas aa ON aa.id = uaa.accreditation_area_id
+                JOIN users u ON u.id = uaa.user_id AND u.is_active = TRUE
+                LEFT JOIN laboratories l ON l.id = u.laboratory_id
+                WHERE uaa.accreditation_area_id = ANY(%s)
+                ORDER BY aa.name, l.code_display, u.last_name, u.first_name
+            """, [non_default_area_ids])
+
+            columns = [col[0] for col in cur.description]
+            rows = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+        # Помечаем исключённых
+        for row in rows:
+            row['excluded'] = row['user_id'] in excluded_user_ids
+
+        # Группируем по области
+        from itertools import groupby
+        for area_name, group in groupby(rows, key=lambda r: (r['area_id'], r['area_name'])):
+            users_list = list(group)
+            admitted_by_area.append({
+                'area_id': area_name[0],
+                'area_name': area_name[1],
+                'users': users_list,
+                'count': len([u for u in users_list if not u['excluded']]),
+                'excluded_count': len([u for u in users_list if u['excluded']]),
+            })
+
+    can_edit_exclusions = _can_edit(request.user)
+
     context = {
         'standard': standard,
         'std_parameters': std_parameters,
@@ -193,6 +244,8 @@ def standard_detail(request, standard_id):
         'standard_lab_ids': standard_lab_ids,
         'all_areas': all_areas,
         'standard_area_ids': standard_area_ids,
+        'admitted_by_area': admitted_by_area,
+        'can_edit_exclusions': can_edit_exclusions,
     }
     return render(request, 'core/standard_parameters_detail.html', context)
 
@@ -606,3 +659,76 @@ def api_parameter_reorder(request):
         ).update(display_order=idx * 10)
 
     return JsonResponse({'success': True})
+
+
+# ============================================================
+# AJAX: Управление исключениями из допуска ⭐ v3.28.0
+# ============================================================
+
+@login_required
+@require_POST
+def api_standard_toggle_exclusion(request):
+    """
+    Исключить или вернуть допуск сотрудника к стандарту.
+
+    POST JSON:
+      standard_id  — ID стандарта
+      user_id      — ID сотрудника
+      exclude      — true (исключить) или false (вернуть допуск)
+      reason       — причина исключения (опционально)
+    """
+    if not _can_edit(request.user):
+        return JsonResponse({'error': 'Нет прав на редактирование'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Некорректный JSON'}, status=400)
+
+    standard_id = data.get('standard_id')
+    user_id = data.get('user_id')
+    exclude = data.get('exclude', True)
+    reason = data.get('reason', '').strip() or None
+
+    if not standard_id or not user_id:
+        return JsonResponse({'error': 'standard_id и user_id обязательны'}, status=400)
+
+    from core.models import User as UserModel
+    target_user = get_object_or_404(UserModel, pk=user_id)
+    standard = get_object_or_404(Standard, pk=standard_id)
+
+    with connection.cursor() as cur:
+        if exclude:
+            cur.execute(
+                "INSERT INTO user_standard_exclusions (user_id, standard_id, excluded_by_id, reason) "
+                "VALUES (%s, %s, %s, %s) ON CONFLICT (user_id, standard_id) DO UPDATE SET "
+                "excluded_by_id = %s, reason = %s, excluded_at = CURRENT_TIMESTAMP",
+                [user_id, standard_id, request.user.pk, reason,
+                 request.user.pk, reason]
+            )
+            action_name = 'user_excluded_from_standard'
+            msg = f'{target_user.full_name} исключён из допуска к {standard.code}'
+        else:
+            cur.execute(
+                "DELETE FROM user_standard_exclusions WHERE user_id = %s AND standard_id = %s",
+                [user_id, standard_id]
+            )
+            action_name = 'user_included_to_standard'
+            msg = f'{target_user.full_name} возвращён в допуск к {standard.code}'
+
+    # Аудит
+    log_action(
+        request,
+        entity_type='standard',
+        entity_id=standard_id,
+        action=action_name,
+        extra_data={
+            'user_id': user_id,
+            'user_name': target_user.full_name,
+            'standard_code': standard.code,
+            'reason': reason,
+        },
+    )
+
+    return JsonResponse({'success': True, 'message': msg})
+

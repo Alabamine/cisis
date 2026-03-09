@@ -23,7 +23,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 
 from core.models import (
-    AuditLog, User, JournalColumn,
+    AuditLog, User, JournalColumn, Sample,
     SampleStatus, WorkshopStatus, ReportType, FurtherMovement,
     Laboratory, Client, Contract, Standard, AccreditationArea, Equipment,
 )
@@ -38,20 +38,63 @@ ENTITY_TYPE_LABELS = {
     'equipment': 'Оборудование',
     'measuring_instrument': 'Средство измерения',
     'standard': 'Стандарт',
+    'parameter': 'Показатель',
     'user': 'Пользователь',
     'protocol': 'Протокол',
     'climate_log': 'Журнал климатики',
+    'USER': 'Сотрудник',
+    'RESPONSIBILITY_MATRIX': 'Матрица ответственности',
+    'acceptance_act': 'Акт приёма-передачи',
+    'client': 'Заказчик',
+    'contract': 'Договор',
+    'contact': 'Контакт',
+    'file': 'Файл',
+    'maintenance': 'Техобслуживание',
+}
+
+# Маппинг entity_type → название журнала (секции системы)
+JOURNAL_LABELS = {
+    'sample': 'Журнал образцов',
+    'standard': 'Справочник стандартов',
+    'parameter': 'Справочник стандартов',
+    'USER': 'Справочник сотрудников',
+    'RESPONSIBILITY_MATRIX': 'Матрица ответственности',
+    'equipment': 'Оборудование',
+    'acceptance_act': 'Акты приёма-передачи',
+    'client': 'Справочник заказчиков',
+    'contract': 'Справочник заказчиков',
+    'contact': 'Справочник заказчиков',
+    'file': 'Файлы',
+    'maintenance': 'Техобслуживание',
+    'user': 'Пользователи',
 }
 
 # Человекочитаемые названия действий
 ACTION_LABELS = {
     'create': 'Создание',
+    'created': 'Создание',
     'update': 'Изменение',
     'status_change': 'Смена статуса',
     'delete': 'Удаление',
     'm2m_add': 'Добавление связи',
     'm2m_remove': 'Удаление связи',
     'view': 'Просмотр',
+    'standard_created': 'Создание стандарта',
+    'standard_updated': 'Изменение стандарта',
+    'standard_activated': 'Активация стандарта',
+    'standard_deactivated': 'Деактивация стандарта',
+    'parameter_added': 'Добавление показателя',
+    'parameter_updated': 'Изменение показателя',
+    'parameter_removed': 'Удаление показателя',
+    'user_excluded_from_standard': 'Исключение из допуска',
+    'user_included_to_standard': 'Возврат допуска',
+    'EMPLOYEE_ADD': 'Добавление сотрудника',
+    'EMPLOYEE_EDIT': 'Изменение сотрудника',
+    'EMPLOYEE_DEACTIVATE': 'Деактивация сотрудника',
+    'EMPLOYEE_ACTIVATE': 'Активация сотрудника',
+    'EMPLOYEE_RESET_PASSWORD': 'Сброс пароля',
+    'EMPLOYEE_AREAS_CHANGED': 'Изменение областей аккредитации',
+    'MATRIX_BULK_UPDATE': 'Массовое изменение допусков',
 }
 
 
@@ -375,17 +418,174 @@ def _resolve_value(field_code, raw_value):
     return val
 
 
+def _resolve_entity_name(entity_type, entity_id, extra_data=None):
+    """
+    ⭐ v3.28.0: Резолвит entity_type + entity_id в человекочитаемое название.
+    Например: ('standard', 6) → 'ГОСТ 123'
+    """
+    if not entity_id:
+        return None
+
+    try:
+        eid = int(entity_id)
+    except (ValueError, TypeError):
+        return str(entity_id)
+
+    # Пробуем из extra_data (там часто уже есть название)
+    if extra_data and isinstance(extra_data, dict):
+        # cipher для образцов
+        if entity_type == 'sample' and 'cipher' in extra_data:
+            return extra_data['cipher']
+        # employee для сотрудников
+        if entity_type == 'USER' and 'employee' in extra_data:
+            return extra_data['employee']
+        # code для стандартов
+        if entity_type == 'standard' and 'code' in extra_data:
+            return extra_data['code']
+
+    # Резолвим из БД
+    if entity_type == 'sample':
+        try:
+            s = Sample.objects.filter(id=eid).values_list('cipher', flat=True).first()
+            return s or f'#{eid}'
+        except Exception:
+            return f'#{eid}'
+
+    if entity_type == 'standard':
+        return _resolve_standard(eid)
+
+    if entity_type == 'parameter':
+        try:
+            from core.models.parameters import Parameter
+            p = Parameter.objects.filter(id=eid).values_list('name', flat=True).first()
+            return p or f'#{eid}'
+        except Exception:
+            return f'#{eid}'
+
+    if entity_type in ('USER', 'user'):
+        return _resolve_user(eid)
+
+    if entity_type == 'equipment':
+        return _resolve_equipment(eid)
+
+    if entity_type == 'acceptance_act':
+        try:
+            from core.models import AcceptanceAct
+            act = AcceptanceAct.objects.filter(id=eid).values_list('number', flat=True).first()
+            return f'Акт {act}' if act else f'#{eid}'
+        except Exception:
+            return f'#{eid}'
+
+    if entity_type == 'client':
+        return _resolve_client(eid)
+
+    if entity_type == 'contract':
+        return _resolve_contract(eid)
+
+    if entity_type == 'maintenance':
+        try:
+            from core.models import Equipment
+            # maintenance plan → equipment name
+            from django.db import connection
+            with connection.cursor() as cur:
+                cur.execute("""
+                    SELECT e.name FROM maintenance_plans mp
+                    JOIN equipment e ON e.id = mp.equipment_id
+                    WHERE mp.id = %s
+                """, [eid])
+                row = cur.fetchone()
+                return row[0] if row else f'#{eid}'
+        except Exception:
+            return f'#{eid}'
+
+    return f'#{eid}'
+
+
 def _enrich_entries(entries):
     """
     Добавляет к каждой записи аудита человекочитаемые поля:
     - field_display: название поля
     - old_display: значение «Было»
     - new_display: значение «Стало»
+    - action_display: человекочитаемое действие ⭐ v3.28.0
+    - entity_display: человекочитаемая сущность ⭐ v3.28.0
+    - entity_name: конкретное название (ГОСТ 123, Иванов Иван) ⭐ v3.28.0
+    - journal_display: название журнала / раздела ⭐ v3.28.0
+    - extra_info: доп. информация из extra_data ⭐ v3.28.0
     """
     for entry in entries:
         entry.field_display = _resolve_field_display(entry.field_name)
         entry.old_display = _resolve_value(entry.field_name, entry.old_value)
         entry.new_display = _resolve_value(entry.field_name, entry.new_value)
+
+        # ⭐ v3.28.0: Человекочитаемые поля
+        entry.action_display = ACTION_LABELS.get(entry.action, entry.action)
+        entry.entity_display = ENTITY_TYPE_LABELS.get(entry.entity_type, entry.entity_type)
+        entry.journal_display = JOURNAL_LABELS.get(entry.entity_type, '')
+        entry.entity_name = _resolve_entity_name(
+            entry.entity_type, entry.entity_id, entry.extra_data
+        )
+
+        # ⭐ v3.28.0: Доп. информация из extra_data
+        extra_info = ''
+        if entry.extra_data and isinstance(entry.extra_data, dict):
+            ed = entry.extra_data
+
+            # ── Заполняем Поле / Было / Стало из extra_data ──
+
+            # Исключение / возврат допуска к стандарту
+            if entry.action == 'user_excluded_from_standard':
+                entry.field_display = entry.field_display or 'Допуск сотрудника'
+                entry.old_display = ed.get('user_name', '—')
+                entry.new_display = f"Исключён"
+                if ed.get('reason'):
+                    entry.new_display += f" ({ed['reason']})"
+                extra_info = ed.get('standard_code', '')
+
+            elif entry.action == 'user_included_to_standard':
+                entry.field_display = entry.field_display or 'Допуск сотрудника'
+                entry.old_display = 'Исключён'
+                entry.new_display = ed.get('user_name', '—')
+                extra_info = ed.get('standard_code', '')
+
+            # Действия с сотрудниками
+            elif entry.action in ('EMPLOYEE_ADD', 'EMPLOYEE_EDIT', 'EMPLOYEE_DEACTIVATE',
+                                   'EMPLOYEE_ACTIVATE', 'EMPLOYEE_RESET_PASSWORD'):
+                extra_info = ed.get('employee', '')
+
+            # Изменение областей аккредитации сотрудника
+            elif entry.action == 'EMPLOYEE_AREAS_CHANGED':
+                entry.field_display = entry.field_display or 'Области аккредитации'
+                added = ed.get('added', [])
+                removed = ed.get('removed', [])
+                entry.old_display = ', '.join(removed) if removed else '—'
+                entry.new_display = ', '.join(added) if added else '—'
+                extra_info = ed.get('employee', '')
+
+            # Массовое обновление матрицы
+            elif entry.action == 'MATRIX_BULK_UPDATE':
+                entry.field_display = entry.field_display or 'Допуски'
+                a = ed.get('added', 0)
+                r = ed.get('removed', 0)
+                entry.old_display = f"−{r}" if r else '—'
+                entry.new_display = f"+{a}" if a else '—'
+                extra_info = f"Всего изменений: {ed.get('total_changes', 0)}"
+
+            # Действия с показателями
+            elif entry.action in ('parameter_added', 'parameter_updated', 'parameter_removed'):
+                entry.field_display = entry.field_display or 'Показатель'
+                entry.new_display = ed.get('parameter_name', '—')
+                if ed.get('role'):
+                    entry.new_display += f" ({ed['role']})"
+
+            # Действия со стандартами
+            elif entry.action in ('standard_created', 'standard_updated',
+                                   'standard_activated', 'standard_deactivated'):
+                if 'code' in ed:
+                    extra_info = ed['code']
+
+        entry.extra_info = extra_info
+
     return entries
 
 

@@ -57,6 +57,15 @@ WORKSPACE_CARDS = [
     },
 
     {
+        'name': 'Файловый менеджер',
+        'icon': '📁',
+        'url': 'file_manager',
+        'description': 'Просмотр и поиск файлов по категориям',
+        'journal_code': 'FILES',
+        'requires_column': 'equipment_files',
+    },
+
+    {
         'name': 'Справочник стандартов',  # было 'Показатели стандартов'
         'icon': '📚',  # было '📊'
         'url': 'standards_list',  # было 'standards_parameters_list'
@@ -81,17 +90,16 @@ WORKSPACE_CARDS = [
         'description': 'Статистика по центру',
         'journal_code': 'ANALYTICS',
         'requires_column': 'access'
-    }, 
+    },
 
     {
-        'name': 'Техническое обслуживание',
-        'icon': '🔧',
-        'url': 'maintenance',
-        'description': 'Планы ТО оборудования',
-        'journal_code': 'MAINTENANCE',
+        'name': 'Реестр оборудования',
+        'icon': '🔬',
+        'url': 'equipment_list',
+        'description': 'Справочник оборудования лабораторий',
+        'journal_code': 'EQUIPMENT',
         'requires_column': 'access',
-        
-},
+    },
 ]
 
 
@@ -118,6 +126,7 @@ def workspace_home(request):
             'icon': card['icon'],
             'description': card['description'],
             'url': card['url'],
+            'url_type': card.get('url_type', 'name'),  # ← добавить эту строку
         })
 
         # SYSADMIN: карточка для доступа к Django Admin

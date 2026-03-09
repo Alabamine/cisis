@@ -51,7 +51,9 @@
             font-size: 16px; font-weight: 600; color: #333;
             margin-bottom: 16px; padding-bottom: 10px;
             border-bottom: 2px solid #f0f0f0;
+            display: flex; justify-content: space-between; align-items: center;
         }
+        .card-title-text { }
         .info-grid {
             display: grid; grid-template-columns: 1fr 1fr;
             gap: 16px;
@@ -87,6 +89,74 @@
         .trainee-list li:last-child { border-bottom: none; }
         .trainee-list a { color: #4a90e2; text-decoration: none; }
         .trainee-list a:hover { text-decoration: underline; }
+
+        /* Таблица оборудования ⭐ v3.28.0 */
+        .equip-table {
+            width: 100%; border-collapse: collapse; font-size: 13px;
+        }
+        .equip-table th {
+            text-align: left; padding: 8px 10px; font-size: 11px;
+            color: #888; text-transform: uppercase; font-weight: 600;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .equip-table td {
+            padding: 8px 10px; border-bottom: 1px solid #f5f5f5;
+            color: #333; vertical-align: middle;
+        }
+        .equip-table tr:last-child td { border-bottom: none; }
+        .equip-table tr:hover { background: #fafafa; }
+        .equip-type {
+            display: inline-block; padding: 2px 8px; border-radius: 4px;
+            font-size: 11px; font-weight: 600;
+        }
+        .equip-type-io { background: #e8f0fe; color: #1a73e8; }
+        .equip-type-si { background: #e6f4ea; color: #137333; }
+        .equip-count {
+            font-size: 12px; color: #888; font-weight: normal;
+        }
+        .equip-section-label {
+            font-size: 12px; font-weight: 600; color: #555;
+            padding: 10px 0 6px; border-bottom: 1px solid #e8e8e8;
+            margin-bottom: 0;
+        }
+        .equip-section-label:first-child { padding-top: 0; }
+
+        /* Области аккредитации ⭐ v3.28.0 */
+        .area-badges { display: flex; gap: 8px; flex-wrap: wrap; padding: 4px 0; }
+        .area-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 6px 14px; border-radius: 20px;
+            font-size: 13px; font-weight: 500;
+        }
+        .area-badge-active {
+            background: #e6f4ea; color: #137333;
+            border: 1px solid #c3e6cb;
+        }
+        .area-badge-inactive {
+            background: #f5f5f5; color: #999;
+            border: 1px solid #e8e8e8;
+        }
+        .area-checkbox-group {
+            display: flex; flex-wrap: wrap; gap: 10px; padding: 8px 0;
+        }
+        .area-checkbox-group label {
+            display: flex; align-items: center; gap: 6px;
+            font-size: 13px; color: #444; cursor: pointer;
+            padding: 6px 14px; border: 1px solid #e0e0e0;
+            border-radius: 20px; transition: all 0.2s;
+        }
+        .area-checkbox-group label:hover {
+            border-color: #4a90e2; background: #f0f5ff;
+        }
+        .area-checkbox-group input[type="checkbox"] {
+            accent-color: #4a90e2;
+        }
+        .area-empty {
+            color: #999; font-size: 13px; padding: 8px 0;
+        }
+        .btn-sm {
+            padding: 5px 12px; font-size: 12px;
+        }
 
         /* Модальное окно подтверждения */
         .modal-overlay {
@@ -136,7 +206,7 @@
 
 <!-- Основная информация -->
 <div class="card">
-    <div class="card-title">📋 Основная информация</div>
+    <div class="card-title"><span class="card-title-text">📋 Основная информация</span></div>
     <div class="info-grid">
         <div class="info-item">
             <div class="info-label">Фамилия</div>
@@ -185,7 +255,7 @@
 
 <!-- Контакты -->
 <div class="card">
-    <div class="card-title">📞 Контакты</div>
+    <div class="card-title"><span class="card-title-text">📞 Контакты</span></div>
     <div class="info-grid">
         <div class="info-item">
             <div class="info-label">Телефон</div>
@@ -209,7 +279,7 @@
 <!-- Стажёр / Наставник -->
 {% if employee.is_trainee or trainees %}
 <div class="card">
-    <div class="card-title">🎓 Стажировка</div>
+    <div class="card-title"><span class="card-title-text">🎓 Стажировка</span></div>
     <div class="info-grid">
         {% if employee.is_trainee %}
         <div class="info-item">
@@ -241,9 +311,144 @@
 </div>
 {% endif %}
 
+<!-- Области аккредитации ⭐ v3.28.0 -->
+<div class="card">
+    <div class="card-title">
+        <span class="card-title-text">🏅 Области аккредитации</span>
+        {% if can_manage_areas %}
+            <div>
+                <button class="btn btn-sm btn-primary" id="btnEditAreas" onclick="toggleAreasEdit(true)">✏️ Изменить</button>
+                <a href="{% url 'responsibility_matrix' %}" class="btn btn-sm btn-secondary" style="margin-left: 4px;">📊 Матрица</a>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Режим просмотра -->
+    <div id="areasView">
+        {% if user_area_ids %}
+            <div class="area-badges">
+                {% for area in all_areas %}
+                    {% if area.id in user_area_ids %}
+                        <span class="area-badge area-badge-active">✓ {{ area.name }}</span>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="area-empty">Нет допусков к областям аккредитации</div>
+        {% endif %}
+    </div>
+
+    <!-- Режим редактирования -->
+    <div id="areasEdit" style="display: none;">
+        <form method="POST" action="{% url 'employee_save_areas' employee.pk %}">
+            {% csrf_token %}
+            <div class="area-checkbox-group">
+                {% for area in all_areas %}
+                    <label>
+                        <input type="checkbox" name="area_ids" value="{{ area.id }}"
+                               {% if area.id in user_area_ids %}checked{% endif %}>
+                        {{ area.name }}
+                    </label>
+                {% endfor %}
+            </div>
+            <div style="margin-top: 12px; display: flex; gap: 8px;">
+                <button type="submit" class="btn btn-sm btn-primary">💾 Сохранить</button>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAreasEdit(false)">Отмена</button>
+            </div>
+        </form>
+    </div>
+
+    {% if standard_exclusions %}
+    <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid #f0f0f0;">
+        <div style="font-size: 11px; font-weight: 600; color: #c5221f; text-transform: uppercase; margin-bottom: 6px;">
+            Исключения по стандартам ({{ standard_exclusions|length }})
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            {% for ex in standard_exclusions %}
+            <a href="{% url 'standard_detail' ex.standard_id %}"
+               style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; background: #fce8e6; border-radius: 16px; font-size: 12px; color: #c5221f; text-decoration: none; border: 1px solid #f5c6cb;"
+               title="{% if ex.reason %}{{ ex.reason }}{% else %}Нет причины{% endif %}">
+                ✕ {{ ex.code }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Оборудование ⭐ v3.28.0 -->
+{% if equipment_responsible or equipment_substitute %}
+<div class="card">
+    <div class="card-title">
+        <span class="card-title-text">
+            🔧 Оборудование
+            <span class="equip-count">({{ equipment_responsible|length|add:equipment_substitute|length }})</span>
+        </span>
+    </div>
+
+    {% if equipment_responsible %}
+    <div class="equip-section-label">Ответственный <span class="equip-count">({{ equipment_responsible|length }})</span></div>
+    <table class="equip-table">
+        <thead>
+            <tr>
+                <th>Название</th>
+                <th style="width: 130px;">Инв. номер</th>
+                <th style="width: 50px;">Тип</th>
+                <th style="width: 80px;">Лаб.</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for eq in equipment_responsible %}
+            <tr>
+                <td>{{ eq.name }}</td>
+                <td>{{ eq.inventory_number }}</td>
+                <td>
+                    <span class="equip-type {% if eq.equipment_type == 'ИО' %}equip-type-io{% else %}equip-type-si{% endif %}">
+                        {{ eq.equipment_type }}
+                    </span>
+                </td>
+                <td>{{ eq.lab_display|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if equipment_substitute %}
+    <div class="equip-section-label" {% if equipment_responsible %}style="margin-top: 16px;"{% endif %}>
+        Замещающий <span class="equip-count">({{ equipment_substitute|length }})</span>
+    </div>
+    <table class="equip-table">
+        <thead>
+            <tr>
+                <th>Название</th>
+                <th style="width: 130px;">Инв. номер</th>
+                <th style="width: 50px;">Тип</th>
+                <th style="width: 80px;">Лаб.</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for eq in equipment_substitute %}
+            <tr>
+                <td>{{ eq.name }}</td>
+                <td>{{ eq.inventory_number }}</td>
+                <td>
+                    <span class="equip-type {% if eq.equipment_type == 'ИО' %}equip-type-io{% else %}equip-type-si{% endif %}">
+                        {{ eq.equipment_type }}
+                    </span>
+                </td>
+                <td>{{ eq.lab_display|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+{% endif %}
+
 <!-- Системная информация -->
 <div class="card">
-    <div class="card-title">⚙️ Системная информация</div>
+    <div class="card-title"><span class="card-title-text">⚙️ Системная информация</span></div>
     <div class="info-grid">
         <div class="info-item">
             <div class="info-label">Дата создания</div>
@@ -326,6 +531,13 @@ document.querySelectorAll('.modal-overlay').forEach(el => {
         if (e.target === el) el.classList.remove('active');
     });
 });
+
+// ⭐ v3.28.0: переключение редактирования областей
+function toggleAreasEdit(editing) {
+    document.getElementById('areasView').style.display = editing ? 'none' : '';
+    document.getElementById('areasEdit').style.display = editing ? '' : 'none';
+    document.getElementById('btnEditAreas').style.display = editing ? 'none' : '';
+}
 </script>
 
 </body>

@@ -1307,3 +1307,138 @@ def search_moisture_samples(request):
             for s in samples
         ]
     })
+@login_required
+def api_check_operator_accreditation(request):
+    """
+    ⭐ v3.28.0: AJAX — проверка допуска операторов к областям аккредитации.
+
+    GET: ?operator_ids=1,2,3&standard_ids=4,5,6
+    Возвращает JSON со списком предупреждений.
+
+    Учитывает:
+    - user_accreditation_areas (допуск к области)
+    - user_standard_exclusions (исключения по конкретным стандартам)
+    """
+    operator_ids_raw = request.GET.get('operator_ids', '')
+    standard_ids_raw = request.GET.get('standard_ids', '')
+
+    if not operator_ids_raw or not standard_ids_raw:
+        return JsonResponse({'warnings': []})
+
+    try:
+        operator_ids = [int(x) for x in operator_ids_raw.split(',') if x.strip()]
+        standard_ids = [int(x) for x in standard_ids_raw.split(',') if x.strip()]
+    except (ValueError, TypeError):
+        return JsonResponse({'warnings': []})
+
+    if not operator_ids or not standard_ids:
+        return JsonResponse({'warnings': []})
+
+    from django.db import connection
+
+    # 1. Для каждого стандарта — его НЕ-дефолтные области
+    with connection.cursor() as cur:
+        cur.execute("""
+            SELECT saa.standard_id, aa.id AS area_id, aa.name AS area_name
+            FROM standard_accreditation_areas saa
+            JOIN accreditation_areas aa ON aa.id = saa.accreditation_area_id
+            WHERE saa.standard_id = ANY(%s)
+              AND aa.is_default = FALSE
+              AND aa.is_active = TRUE
+        """, [standard_ids])
+        # {standard_id: {area_id: area_name, ...}}
+        standard_areas = {}
+        for row in cur.fetchall():
+            standard_areas.setdefault(row[0], {})[row[1]] = row[2]
+
+    # Если все стандарты только «Вне области» — проверка не нужна
+    if not standard_areas:
+        return JsonResponse({'warnings': []})
+
+    # 2. Допуски операторов к областям
+    all_area_ids = set()
+    for areas in standard_areas.values():
+        all_area_ids.update(areas.keys())
+
+    with connection.cursor() as cur:
+        cur.execute("""
+            SELECT user_id, accreditation_area_id
+            FROM user_accreditation_areas
+            WHERE user_id = ANY(%s)
+              AND accreditation_area_id = ANY(%s)
+        """, [operator_ids, list(all_area_ids)])
+        # set of (user_id, area_id)
+        operator_area_set = {(row[0], row[1]) for row in cur.fetchall()}
+
+    # 3. Исключения по стандартам
+    with connection.cursor() as cur:
+        cur.execute("""
+            SELECT user_id, standard_id
+            FROM user_standard_exclusions
+            WHERE user_id = ANY(%s)
+              AND standard_id = ANY(%s)
+        """, [operator_ids, list(standard_areas.keys())])
+        # set of (user_id, standard_id)
+        exclusion_set = {(row[0], row[1]) for row in cur.fetchall()}
+
+    # 4. Имена операторов
+    operators = User.objects.filter(id__in=operator_ids).values(
+        'id', 'last_name', 'first_name', 'sur_name'
+    )
+    operator_names = {}
+    for op in operators:
+        name = f"{op['last_name']} {op['first_name']}"
+        if op.get('sur_name'):
+            name += f" {op['sur_name']}"
+        operator_names[op['id']] = name
+
+    # 5. Формируем предупреждения
+    warnings = []
+    for op_id in operator_ids:
+        issues = []  # [(standard_code, reason), ...]
+
+        for std_id, areas in standard_areas.items():
+            # Проверяем исключение по стандарту
+            if (op_id, std_id) in exclusion_set:
+                issues.append({
+                    'standard_id': std_id,
+                    'reason': 'excluded',  # исключён из допуска
+                })
+                continue
+
+            # Проверяем допуск к хотя бы одной области этого стандарта
+            has_area = any(
+                (op_id, area_id) in operator_area_set
+                for area_id in areas.keys()
+            )
+            if not has_area:
+                area_names = list(areas.values())
+                issues.append({
+                    'standard_id': std_id,
+                    'reason': 'no_area',
+                    'missing_areas': area_names,
+                })
+
+        if issues:
+            # Получаем коды стандартов для отображения
+            std_codes = dict(
+                Standard.objects.filter(id__in=[i['standard_id'] for i in issues])
+                .values_list('id', 'code')
+            )
+
+            details = []
+            for issue in issues:
+                std_code = std_codes.get(issue['standard_id'], f"ID {issue['standard_id']}")
+                if issue['reason'] == 'excluded':
+                    details.append(f'{std_code} (исключён)')
+                else:
+                    areas_str = ', '.join(issue['missing_areas'])
+                    details.append(f'{std_code} (нет допуска: {areas_str})')
+
+            warnings.append({
+                'operator_id': op_id,
+                'operator_name': operator_names.get(op_id, f'ID {op_id}'),
+                'details': details,
+            })
+
+    return JsonResponse({'warnings': warnings})

@@ -1,0 +1,1065 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ eq.name }} — CISIS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+
+        .header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: flex-start; }
+        .header-left h1 { font-size: 22px; color: #333; margin-bottom: 6px; }
+        .header-left .subtitle { font-size: 14px; color: #666; }
+        .header-right { display: flex; gap: 10px; }
+        .btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; transition: all 0.2s; color: white; }
+        .btn-secondary { background: #6c757d; } .btn-secondary:hover { background: #5a6268; }
+        .btn-primary { background: #4a90e2; } .btn-primary:hover { background: #357abd; }
+        .btn-success { background: #28a745; } .btn-success:hover { background: #218838; }
+
+        .badge-status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 13px; font-weight: 500; }
+        .badge-OPERATIONAL { background: #d4edda; color: #155724; }
+        .badge-MAINTENANCE { background: #fff3cd; color: #856404; }
+        .badge-CALIBRATION { background: #d1ecf1; color: #0c5460; }
+        .badge-RETIRED { background: #f8d7da; color: #721c24; }
+        .badge-type { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .badge-type-СИ { background: #e3f2fd; color: #1565c0; }
+        .badge-type-ИО { background: #fce4ec; color: #c62828; }
+        .badge-type-ВО { background: #f3e5f5; color: #6a1b9a; }
+        .badge-area { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 500; background: #e8eaf6; color: #283593; margin: 2px; }
+
+        .section { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; overflow: hidden; }
+        .section-header { padding: 16px 20px; background: #f8f9fa; border-bottom: 1px solid #eee; font-size: 16px; font-weight: 600; color: #333; display: flex; justify-content: space-between; align-items: center; }
+        .section-body { padding: 20px; }
+
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+        .info-row { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+        .info-label { font-size: 13px; font-weight: 600; color: #888; min-width: 160px; flex-shrink: 0; }
+        .info-value { font-size: 13px; color: #333; word-break: break-word; }
+
+        .text-block { padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+        .text-block:last-child { border-bottom: none; }
+        .text-label { font-size: 13px; font-weight: 600; color: #888; margin-bottom: 4px; }
+        .text-value { font-size: 13px; color: #333; white-space: pre-line; line-height: 1.5; }
+
+        .detail-table { width: 100%; border-collapse: collapse; }
+        .detail-table th, .detail-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 13px; }
+        .detail-table th { background: #f8f9fa; font-weight: 600; color: #555; }
+        .detail-table tr:hover { background: #f0f7ff; }
+
+        .maintenance-type { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 500; }
+        .mt-VERIFICATION { background: #e3f2fd; color: #1565c0; }
+        .mt-ATTESTATION { background: #fff8e1; color: #f57f17; }
+        .mt-REPAIR { background: #fce4ec; color: #c62828; }
+
+        .empty-text { color: #999; font-style: italic; padding: 12px 0; }
+        .plan-link { color: #4a90e2; text-decoration: none; }
+        .plan-link:hover { text-decoration: underline; }
+
+        /* ═══════════════════════ VERIFICATION STATUS ═══════════════════════ */
+        .verification-card { padding: 16px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .verification-card .vc-left { display: flex; align-items: center; gap: 12px; }
+        .verification-card .vc-icon { font-size: 28px; }
+        .verification-card .vc-title { font-size: 15px; font-weight: 600; }
+        .verification-card .vc-detail { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+        .verification-card .vc-right { text-align: right; }
+        .verification-card .vc-date { font-size: 13px; font-weight: 500; }
+        .verification-card .vc-cert { font-size: 12px; opacity: 0.8; }
+
+        /* ═══════════════════════ INLINE FORM ═══════════════════════ */
+        .inline-form { border-top: 1px solid #eee; padding-top: 16px; margin-top: 16px; }
+        .inline-form h4 { font-size: 14px; color: #555; margin-bottom: 12px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .form-group label { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; }
+        .form-group label .req { color: #dc3545; }
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 7px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; font-family: inherit;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none; border-color: #4a90e2; box-shadow: 0 0 0 2px rgba(74,144,226,0.15);
+        }
+        .form-group textarea { resize: vertical; min-height: 60px; }
+        .form-group-full { grid-column: 1 / -1; }
+        .form-actions-inline { margin-top: 12px; display: flex; gap: 10px; }
+
+        /* Verification-specific fields */
+        .verification-fields { display: none; border: 1px solid #e3f2fd; background: #f8fbff; border-radius: 6px; padding: 12px; margin-top: 10px; }
+        .verification-fields.visible { display: block; }
+        .verification-fields h5 { font-size: 13px; color: #1565c0; margin-bottom: 10px; }
+
+       /* ═══════════════════════ FILES BLOCK v3.30.0 ═══════════════════════ */
+        .files-container { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; overflow: hidden; }
+        .files-header-row { padding: 16px 20px; background: #f8f9fa; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .files-header { font-size: 16px; font-weight: 600; color: #333; margin: 0; }
+        .files-count { font-weight: 400; color: #999; font-size: 14px; }
+        .files-body { padding: 20px; }
+        .file-group { margin-bottom: 16px; }
+        .file-group:last-child { margin-bottom: 0; }
+        .file-group-title { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #eee; }
+        .file-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 4px; transition: background 0.15s; }
+        .file-row:hover { background: #f0f7ff; }
+        .file-icon { font-size: 18px; flex-shrink: 0; }
+        .file-info { flex: 1; min-width: 0; }
+        .file-name { font-size: 13px; color: #333; font-weight: 500; cursor: pointer; }
+        .file-name:hover { color: #4a90e2; text-decoration: underline; }
+        .file-meta { font-size: 11px; color: #999; margin-top: 1px; }
+        .file-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .file-actions button { background: none; border: 1px solid #ddd; border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer; color: #666; transition: all 0.15s; }
+        .file-actions button:hover { background: #f0f0f0; border-color: #bbb; }
+        .file-actions .btn-del:hover { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .no-files { padding: 20px; text-align: center; color: #999; font-size: 13px; }
+        .file-drop-zone { border: 2px dashed #ddd; border-radius: 8px; transition: all 0.2s; }
+        .file-drop-zone.dragover { border-color: #4a90e2; background: #f0f7ff; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; border-radius: 10px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); overflow: hidden; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #eee; }
+        .modal-header h3 { font-size: 16px; color: #333; }
+        .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #999; padding: 4px; }
+        .modal-close:hover { color: #333; }
+        .modal-body { padding: 20px; }
+        .messages { margin-bottom: 16px; }
+        .messages .msg { padding: 10px 16px; border-radius: 6px; font-size: 13px; margin-bottom: 6px; }
+        .messages .msg-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .messages .msg-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        @media (max-width: 768px) {
+            .header { flex-direction: column; gap: 12px; }
+            .info-grid, .form-grid { grid-template-columns: 1fr; }
+            .info-row { flex-direction: column; gap: 2px; }
+            .info-label { min-width: auto; }
+            .verification-card { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+{% if messages %}
+<div class="messages">{% for message in messages %}<div class="msg msg-{{ message.tags }}">{{ message }}</div>{% endfor %}</div>
+{% endif %}
+
+<div class="header">
+    <div class="header-left">
+        <h1>{{ eq.name }}</h1>
+        <div class="subtitle">
+            <span class="badge-type badge-type-{{ eq.equipment_type }}">{{ eq.get_equipment_type_display }}</span>
+            <span class="badge-status badge-{{ eq.status }}">{{ eq.get_status_display }}</span>
+            {% if eq.laboratory %} — {{ eq.laboratory.name }}{% endif %}
+        </div>
+    </div>
+    <div class="header-right">
+        {% if can_edit %}
+        <a href="{% url 'equipment_edit' eq.id %}" class="btn btn-primary">✏️ Редактировать</a>
+        {% endif %}
+        <a href="{% url 'equipment_list' %}" class="btn btn-secondary">← К реестру</a>
+    </div>
+</div>
+
+<!-- ═══════════════════════ СТАТУС ПОВЕРКИ ═══════════════════════ -->
+{% if verification_status %}
+<div class="verification-card" style="background: {{ verification_status.bg }}; color: {{ verification_status.color }}; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <div class="vc-left">
+        <div class="vc-icon">
+            {% if verification_status.status == 'valid' %}✅
+            {% elif verification_status.status == 'warning' %}⚠️
+            {% elif verification_status.status == 'expiring' %}🔶
+            {% else %}🔴{% endif %}
+        </div>
+        <div>
+            <div class="vc-title">Поверка: {{ verification_status.label }}</div>
+            <div class="vc-detail">
+                {% if verification_status.status == 'expired' %}
+                    Просрочена на {{ verification_status.days }} дн.
+                {% else %}
+                    Осталось {{ verification_status.days }} дн.
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="vc-right">
+        <div class="vc-date">До: {{ verification_status.record.valid_until|date:"d.m.Y" }}</div>
+        {% if verification_status.record.certificate_number %}
+        <div class="vc-cert">Св-во: {{ verification_status.record.certificate_number }}</div>
+        {% endif %}
+        {% if verification_status.record.fgis_arshin_number %}
+        <div class="vc-cert">Аршин: {{ verification_status.record.fgis_arshin_number }}</div>
+        {% endif %}
+    </div>
+</div>
+{% elif eq.equipment_type == 'СИ' %}
+<div class="verification-card" style="background: #f8d7da; color: #721c24; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <div class="vc-left">
+        <div class="vc-icon">❓</div>
+        <div>
+            <div class="vc-title">Поверка: нет данных</div>
+            <div class="vc-detail">Для СИ рекомендуется внести запись о поверке</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════════════ ОСНОВНАЯ ИНФОРМАЦИЯ ═══════════════════════ -->
+<div class="section">
+    <div class="section-header">📋 Основная информация</div>
+    <div class="section-body">
+        <div class="info-grid">
+            <div>
+                <div class="info-row"><span class="info-label">Учётный номер</span><span class="info-value">{{ eq.accounting_number }}</span></div>
+                <div class="info-row"><span class="info-label">Тип</span><span class="info-value">{{ eq.get_equipment_type_display }}</span></div>
+                <div class="info-row"><span class="info-label">Наименование</span><span class="info-value">{{ eq.name }}</span></div>
+                <div class="info-row"><span class="info-label">Инвентарный номер</span><span class="info-value">{{ eq.inventory_number|default:"—" }}</span></div>
+                <div class="info-row"><span class="info-label">Подразделение</span><span class="info-value">{{ eq.laboratory.name|default:"—" }}</span></div>
+                <div class="info-row"><span class="info-label">Статус</span><span class="info-value"><span class="badge-status badge-{{ eq.status }}">{{ eq.get_status_display }}</span></span></div>
+            </div>
+            <div>
+                <div class="info-row"><span class="info-label">Производитель</span><span class="info-value">{{ eq.manufacturer|default:"—" }}</span></div>
+                <div class="info-row"><span class="info-label">Год выпуска</span><span class="info-value">{{ eq.year_of_manufacture|default:"—" }}</span></div>
+                <div class="info-row"><span class="info-label">Заводской номер</span><span class="info-value">{{ eq.factory_number|default:"—" }}</span></div>
+                <div class="info-row"><span class="info-label">Номер гос. реестра</span><span class="info-value">{{ eq.state_registry_number|default:"—" }}</span></div>
+                <div class="info-row"><span class="info-label">Принадлежность</span><span class="info-value">{{ eq.ownership|default:"—" }}</span></div>
+                <div class="info-row"><span class="info-label">Документ владения</span><span class="info-value">{{ eq.ownership_doc_number|default:"—" }}</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════ ОТВЕТСТВЕННЫЕ ═══════════════════════ -->
+<div class="section">
+    <div class="section-header">👤 Ответственные</div>
+    <div class="section-body">
+        <div class="info-grid">
+            <div>
+                <div class="info-row"><span class="info-label">Ответственный</span><span class="info-value">{% if eq.responsible_person %}<a href="{% url 'employee_detail' eq.responsible_person.pk %}" style="color:#4a90e2;text-decoration:none;">{{ eq.responsible_person.full_name }}</a>{% else %}—{% endif %}</span></div>
+            </div>
+            <div>
+                <div class="info-row"><span class="info-label">Замещающий</span><span class="info-value">{% if eq.substitute_person %}<a href="{% url 'employee_detail' eq.substitute_person.pk %}" style="color:#4a90e2;text-decoration:none;">{{ eq.substitute_person.full_name }}</a>{% else %}—{% endif %}</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════ ОБЛАСТИ ═══════════════════════ -->
+<div class="section">
+    <div class="section-header">🏅 Области аккредитации</div>
+    <div class="section-body">
+        {% if areas %}{% for area in areas %}<span class="badge-area">{{ area.name }}</span>{% endfor %}
+        {% else %}<p class="empty-text">Области аккредитации не назначены</p>{% endif %}
+    </div>
+</div>
+
+<!-- ═══════════════════════ МЕТРОЛОГИЯ ═══════════════════════ -->
+{% if eq.equipment_type == 'СИ' or eq.metrology_interval or eq.metrology_doc %}
+<div class="section">
+    <div class="section-header">📐 Метрологические данные</div>
+    <div class="section-body">
+        <div class="info-row"><span class="info-label">Межповерочный интервал</span><span class="info-value">{% if eq.metrology_interval %}{{ eq.metrology_interval }} мес.{% else %}—{% endif %}</span></div>
+        {% if eq.metrology_doc %}
+        <div class="text-block"><div class="text-label">Метрологические характеристики</div><div class="text-value">{{ eq.metrology_doc }}</div></div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════════════ ТЕХНИЧЕСКАЯ ДОКУМЕНТАЦИЯ ═══════════════════════ -->
+{% if eq.technical_documentation or eq.intended_use or eq.technical_specs or eq.software or eq.operating_conditions %}
+<div class="section">
+    <div class="section-header">📄 Техническая документация</div>
+    <div class="section-body">
+        {% if eq.technical_documentation %}<div class="text-block"><div class="text-label">Документация</div><div class="text-value">{{ eq.technical_documentation }}</div></div>{% endif %}
+        {% if eq.intended_use %}<div class="text-block"><div class="text-label">Назначение</div><div class="text-value">{{ eq.intended_use }}</div></div>{% endif %}
+        {% if eq.technical_specs %}<div class="text-block"><div class="text-label">Технические характеристики</div><div class="text-value">{{ eq.technical_specs }}</div></div>{% endif %}
+        {% if eq.software %}<div class="text-block"><div class="text-label">Программное обеспечение</div><div class="text-value">{{ eq.software }}</div></div>{% endif %}
+        {% if eq.operating_conditions %}<div class="text-block"><div class="text-label">Условия эксплуатации</div><div class="text-value">{{ eq.operating_conditions }}</div></div>{% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════════════ ФАЙЛЫ ОБОРУДОВАНИЯ v3.30.0 ═══════════════════════ -->
+<div class="files-container" id="files-block">
+    <div class="files-header-row">
+        <h2 class="files-header">📎 Файлы
+            <span id="files-count" class="files-count"></span>
+        </h2>
+        {% if can_upload_files %}
+        <button type="button" class="btn btn-primary" onclick="openUploadModal()" style="font-size:12px; padding: 6px 14px;">
+            📤 Загрузить файл
+        </button>
+        {% endif %}
+    </div>
+    <div class="files-body" id="files-content">
+        <div class="no-files">Загрузка файлов...</div>
+    </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО: Загрузка файла -->
+{% if can_upload_files %}
+<div id="upload-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3>📤 Загрузить файл</h3>
+            <button type="button" class="modal-close" onclick="closeUploadModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <form id="upload-form" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="category" value="EQUIPMENT">
+                <input type="hidden" name="entity_type" value="equipment">
+                <input type="hidden" name="entity_id" value="{{ eq.id }}">
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px;">Тип файла</label>
+                    <select name="file_type" id="upload-file-type" required
+                            style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px;">
+                        <option value="VERIFICATION_CERT">📜 Свидетельство о поверке</option>
+                        <option value="ATTESTATION_CERT">📋 Акт аттестации</option>
+                        <option value="REPAIR_ACT">🔧 Акт ремонта</option>
+                        <option value="MANUAL">📖 Инструкция</option>
+                        <option value="PASSPORT">📄 Паспорт</option>
+                        <option value="OTHER">📎 Прочее</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px;">Файл</label>
+                    <div class="file-drop-zone" id="file-drop-zone">
+                        <input type="file" name="file" id="upload-file-input" required style="display: none;">
+                        <div id="drop-zone-text" style="text-align: center; padding: 20px; cursor: pointer;"
+                             onclick="document.getElementById('upload-file-input').click();">
+                            <div style="font-size: 32px; margin-bottom: 8px;">📁</div>
+                            <div style="font-size: 13px; color: #666;">Нажмите или перетащите файл сюда</div>
+                        </div>
+                        <div id="drop-zone-file" style="display: none; text-align: center; padding: 15px;">
+                            <span id="selected-file-name" style="font-weight: 500; font-size: 13px;"></span>
+                            <span id="selected-file-size" style="color: #666; margin-left: 10px; font-size: 12px;"></span>
+                            <button type="button" style="margin-left: 10px; background: none; border: none; cursor: pointer; color: #dc3545;"
+                                    onclick="clearSelectedFile()">✕</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px;">Описание <span style="color: #999; font-weight: 400;">(необязательно)</span></label>
+                    <input type="text" name="description"
+                           placeholder="Краткое описание файла"
+                           style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px;">
+                </div>
+
+                <div id="upload-error" style="display: none; color: #dc3545; margin-bottom: 10px; font-size: 13px;"></div>
+                <div id="upload-progress" style="display: none; margin-bottom: 10px;">
+                    <div style="background: #e9ecef; border-radius: 4px; overflow: hidden;">
+                        <div id="upload-progress-bar" style="height: 6px; background: #4a90e2; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeUploadModal()">Отмена</button>
+                    <button type="submit" class="btn btn-primary" id="upload-submit-btn">📤 Загрузить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- МОДАЛЬНОЕ ОКНО: Замена файла (версионность) -->
+<div id="replace-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content" style="max-width: 450px;">
+        <div class="modal-header">
+            <h3>🔄 Заменить файл</h3>
+            <button type="button" class="modal-close" onclick="closeReplaceModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <form id="replace-form" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="file_id" id="replace-file-id">
+
+                <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                    <div style="font-weight: 600; font-size: 13px;">Заменяемый файл:</div>
+                    <div id="replace-file-info" style="color: #666; margin-top: 4px; font-size: 13px;"></div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px;">Новый файл</label>
+                    <input type="file" name="file" id="replace-file-input" required
+                           style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px;">
+                </div>
+
+                <div style="background: #fff3cd; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 12px;">
+                    ⚠️ Предыдущая версия будет сохранена в истории.
+                </div>
+
+                <div id="replace-error" style="display: none; color: #dc3545; margin-bottom: 10px; font-size: 13px;"></div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeReplaceModal()">Отмена</button>
+                    <button type="submit" class="btn btn-primary">🔄 Заменить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ═══════════════════════ ПЛАНЫ ТО ═══════════════════════ -->
+<div class="section">
+    <div class="section-header">
+        <span>📅 Планы ТО</span>
+        {% if can_edit %}
+        <button class="btn btn-success" onclick="document.getElementById('add-plan-form').style.display = document.getElementById('add-plan-form').style.display === 'none' ? 'block' : 'none'" style="font-size:12px; padding: 6px 12px;">
+            + Добавить план
+        </button>
+        {% endif %}
+    </div>
+    <div class="section-body">
+
+        <!-- ═══ Инлайн-форма добавления плана ТО ═══ -->
+        {% if can_edit %}
+        <div id="add-plan-form" style="display:none;" class="inline-form">
+            <form method="POST" action="{% url 'equipment_add_plan' eq.id %}">
+                {% csrf_token %}
+                <h4 style="margin-bottom: 12px; color: #555;">Новый план ТО</h4>
+                <div class="form-grid">
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Название <span class="req">*</span></label>
+                        <input type="text" name="plan_name" placeholder="Например: ТО-1, Чистка корпуса, Проверка уровня" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Количество раз</label>
+                        <input type="number" name="frequency_count" min="1" placeholder="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Период (число)</label>
+                        <input type="number" name="frequency_period_value" min="1" placeholder="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Единица</label>
+                        <select name="frequency_unit">
+                            <option value="">—</option>
+                            <option value="DAY">День</option>
+                            <option value="WEEK">Неделя</option>
+                            <option value="MONTH">Месяц</option>
+                            <option value="YEAR">Год</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Следующая дата</label>
+                        <input type="date" name="next_due_date">
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Условие (для нестандартной периодичности)</label>
+                        <input type="text" name="frequency_condition" placeholder="Например: при замене реагента">
+                    </div>
+                    <div class="form-group">
+                        <label style="flex-direction: row; gap: 6px; align-items: center;">
+                            <input type="checkbox" name="is_condition_based" style="width: auto; margin: 0;">
+                            По условию (без календаря)
+                        </label>
+                    </div>
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label>Примечания</label>
+                        <textarea name="plan_notes" rows="2" placeholder="Дополнительная информация"></textarea>
+                    </div>
+                </div>
+                <div class="form-actions-inline">
+                    <button type="submit" class="btn btn-success">💾 Сохранить план</button>
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-plan-form').style.display='none'">Отмена</button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+        {% if maintenance_plans %}
+        <table class="detail-table">
+            <thead><tr><th>Название</th><th>Периодичность</th><th>Следующее ТО</th><th>Примечания</th>{% if can_edit %}<th style="width:80px;">Действия</th>{% endif %}</tr></thead>
+            <tbody>{% for plan in maintenance_plans %}<tr>
+                <td><a href="{% url 'maintenance_detail' plan.pk %}" class="plan-link">{{ plan.name }}</a></td>
+                <td>{{ plan.frequency_display }}</td>
+                <td>{% if plan.next_due_date %}{{ plan.next_due_date|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+                <td>{{ plan.notes|truncatechars:50|default:"—" }}</td>
+                {% if can_edit %}
+                <td>
+                    <button class="btn btn-secondary" style="font-size:11px; padding:3px 8px;" onclick="toggleEditPlan({{ plan.pk }})">✏️</button>
+                    <form method="POST" action="{% url 'equipment_delete_plan' eq.id plan.pk %}" style="display:inline;" onsubmit="return confirm('Деактивировать план «{{ plan.name }}»?')">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-secondary" style="font-size:11px; padding:3px 8px; color:#dc3545;">🗑️</button>
+                    </form>
+                </td>
+                {% endif %}
+            </tr>
+            {% if can_edit %}
+            <tr id="edit-plan-{{ plan.pk }}" style="display:none;">
+                <td colspan="{% if can_edit %}5{% else %}4{% endif %}" style="background:#f8fbff; padding:16px;">
+                    <form method="POST" action="{% url 'equipment_edit_plan' eq.id plan.pk %}">
+                        {% csrf_token %}
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Название <span class="req">*</span></label>
+                                <input type="text" name="plan_name" value="{{ plan.name }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Кол-во раз</label>
+                                <input type="number" name="frequency_count" min="1" value="{{ plan.frequency_count|default_if_none:'' }}">
+                            </div>
+                            <div class="form-group">
+                                <label>Период</label>
+                                <input type="number" name="frequency_period_value" min="1" value="{{ plan.frequency_period_value|default_if_none:'' }}">
+                            </div>
+                            <div class="form-group">
+                                <label>Единица</label>
+                                <select name="frequency_unit">
+                                    <option value="">—</option>
+                                    <option value="DAY" {% if plan.frequency_unit == 'DAY' %}selected{% endif %}>День</option>
+                                    <option value="WEEK" {% if plan.frequency_unit == 'WEEK' %}selected{% endif %}>Неделя</option>
+                                    <option value="MONTH" {% if plan.frequency_unit == 'MONTH' %}selected{% endif %}>Месяц</option>
+                                    <option value="YEAR" {% if plan.frequency_unit == 'YEAR' %}selected{% endif %}>Год</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Следующая дата</label>
+                                <input type="date" name="next_due_date" value="{% if plan.next_due_date %}{{ plan.next_due_date|date:'Y-m-d' }}{% endif %}">
+                            </div>
+                            <div class="form-group">
+                                <label>Условие</label>
+                                <input type="text" name="frequency_condition" value="{{ plan.frequency_condition|default:'' }}">
+                            </div>
+                            <div class="form-group">
+                                <label style="flex-direction:row; gap:6px; align-items:center;">
+                                    <input type="checkbox" name="is_condition_based" style="width:auto; margin:0;" {% if plan.is_condition_based %}checked{% endif %}>
+                                    По условию
+                                </label>
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label>Примечания</label>
+                                <textarea name="plan_notes" rows="2">{{ plan.notes|default:'' }}</textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions-inline">
+                            <button type="submit" class="btn btn-success">💾 Сохранить</button>
+                            <button type="button" class="btn btn-secondary" onclick="toggleEditPlan({{ plan.pk }})">Отмена</button>
+                        </div>
+                    </form>
+                </td>
+            </tr>
+            {% endif %}
+            {% endfor %}</tbody>
+        </table>
+        {% else %}<p class="empty-text">Планы ТО не назначены</p>{% endif %}
+    </div>
+</div>
+
+<!-- ═══════════════════════ ИСТОРИЯ ТО + ПОВЕРКИ ═══════════════════════ -->
+<div class="section">
+    <div class="section-header">
+        <span>🔧 Журнал обслуживания</span>
+        {% if can_edit %}
+        <button class="btn btn-success" onclick="document.getElementById('add-maintenance-form').style.display = document.getElementById('add-maintenance-form').style.display === 'none' ? 'block' : 'none'" style="font-size:12px; padding: 6px 12px;">
+            + Добавить запись
+        </button>
+        {% endif %}
+    </div>
+    <div class="section-body">
+
+        <!-- ═══ Инлайн-форма добавления ═══ -->
+        {% if can_edit %}
+        <div id="add-maintenance-form" style="display:none;" class="inline-form">
+            <form method="POST" action="{% url 'equipment_add_maintenance' eq.id %}">
+                {% csrf_token %}
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Тип <span class="req">*</span></label>
+                        <select name="maintenance_type" id="maint-type" onchange="toggleVerificationFields()" required>
+                            {% for val, display in maintenance_types %}
+                            <option value="{{ val }}">{{ display }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Дата <span class="req">*</span></label>
+                        <input type="date" name="maintenance_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Выполнил</label>
+                        <select name="performed_by">
+                            <option value="">—</option>
+                            {% for u in users_for_form %}
+                            <option value="{{ u.id }}">{{ u.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Документ</label>
+                        <input type="text" name="document_name" placeholder="Номер документа">
+                    </div>
+                    <div class="form-group form-group-full">
+                        <label>Описание</label>
+                        <textarea name="description" rows="2" placeholder="Описание выполненных работ"></textarea>
+                    </div>
+                </div>
+
+                <!-- Поля поверки (показываются для VERIFICATION/ATTESTATION) -->
+                <div class="verification-fields" id="verification-fields">
+                    <h5>📐 Данные поверки / аттестации</h5>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Номер свидетельства</label>
+                            <input type="text" name="certificate_number" placeholder="С-ИМ/01-01-2026/123456">
+                        </div>
+                        <div class="form-group">
+                            <label>Действительно до</label>
+                            <input type="date" name="valid_until">
+                        </div>
+                        <div class="form-group">
+                            <label>Организация-поверитель</label>
+                            <input type="text" name="verification_organization" placeholder="ФБУ «Ростест-Москва»">
+                        </div>
+                        <div class="form-group">
+                            <label>Результат</label>
+                            <select name="verification_result">
+                                <option value="">—</option>
+                                <option value="SUITABLE">Пригоден</option>
+                                <option value="UNSUITABLE">Непригоден</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Номер в ФГИС «Аршин»</label>
+                            <input type="text" name="fgis_arshin_number">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions-inline">
+                    <button type="submit" class="btn btn-success">💾 Сохранить запись</button>
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-maintenance-form').style.display='none'">Отмена</button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+
+        <!-- ═══ Таблица истории ═══ -->
+        {% if maintenance_history %}
+        <table class="detail-table" style="margin-top: 12px;">
+            <thead><tr>
+                <th>Дата</th><th>Тип</th><th>Документ</th>
+                <th>Действительно до</th><th>Результат</th>
+                <th>Описание</th><th>Выполнил</th>
+            </tr></thead>
+            <tbody>
+                {% for m in maintenance_history %}
+                <tr>
+                    <td>{{ m.maintenance_date|date:"d.m.Y" }}</td>
+                    <td><span class="maintenance-type mt-{{ m.maintenance_type }}">{{ m.get_maintenance_type_display }}</span></td>
+                    <td>{{ m.document_name|truncatechars:30|default:"—" }}
+                        {% if m.certificate_number %}<br><small style="color:#1565c0;">Св-во: {{ m.certificate_number }}</small>{% endif %}
+                        {% if m.fgis_arshin_number %}<br><small style="color:#6a1b9a;">Аршин: {{ m.fgis_arshin_number }}</small>{% endif %}
+                    </td>
+                    <td>{% if m.valid_until %}{{ m.valid_until|date:"d.m.Y" }}{% else %}—{% endif %}</td>
+                    <td>
+                        {% if m.verification_result == 'SUITABLE' %}<span style="color:#155724;font-weight:500;">✓ Пригоден</span>
+                        {% elif m.verification_result == 'UNSUITABLE' %}<span style="color:#721c24;font-weight:500;">✗ Непригоден</span>
+                        {% else %}—{% endif %}
+                    </td>
+                    <td title="{{ m.description }}">{{ m.description|truncatechars:40|default:"—" }}
+                        {% if m.verification_organization %}<br><small style="color:#666;">{{ m.verification_organization }}</small>{% endif %}
+                    </td>
+                    <td>{% if m.performed_by %}{{ m.performed_by.full_name }}{% else %}—{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}<p class="empty-text">Записи обслуживания отсутствуют</p>{% endif %}
+    </div>
+</div>
+
+{% if eq.notes or eq.modifications or eq.commissioning_info or eq.condition_on_receipt %}
+<div class="section">
+    <div class="section-header">📝 Дополнительно</div>
+    <div class="section-body">
+        {% if eq.commissioning_info %}<div class="text-block"><div class="text-label">Ввод в эксплуатацию</div><div class="text-value">{{ eq.commissioning_info }}</div></div>{% endif %}
+        {% if eq.condition_on_receipt %}<div class="text-block"><div class="text-label">Состояние при получении</div><div class="text-value">{{ eq.condition_on_receipt }}</div></div>{% endif %}
+        {% if eq.modifications %}<div class="text-block"><div class="text-label">Модификации</div><div class="text-value">{{ eq.modifications }}</div></div>{% endif %}
+        {% if eq.notes %}<div class="text-block"><div class="text-label">Примечания</div><div class="text-value">{{ eq.notes }}</div></div>{% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- JS: Файлы оборудования v3.30.0 -->
+<script>
+(function() {
+    'use strict';
+
+    var EQUIPMENT_ID = {{ eq.id }};
+    var CAN_UPLOAD = {{ can_upload_files|yesno:"true,false" }};
+    var CAN_DELETE = {{ can_delete_files|yesno:"true,false" }};
+
+    var FILE_TYPE_LABELS = {
+        'VERIFICATION_CERT': '📜 Свидетельство о поверке',
+        'ATTESTATION_CERT': '📋 Акт аттестации',
+        'REPAIR_ACT': '🔧 Акт ремонта',
+        'MANUAL': '📖 Инструкция',
+        'PASSPORT': '📄 Паспорт',
+        'CERTIFICATE': '📜 Свидетельство',
+        'OTHER': '📎 Прочее'
+    };
+
+    var FILE_TYPE_ORDER = [
+        'VERIFICATION_CERT', 'ATTESTATION_CERT', 'REPAIR_ACT',
+        'MANUAL', 'PASSPORT', 'CERTIFICATE', 'OTHER'
+    ];
+
+    // ═══════════════════════════════════════════
+    // Загрузка списка файлов
+    // ═══════════════════════════════════════════
+
+    function loadFiles() {
+        fetch('/api/files/equipment/' + EQUIPMENT_ID + '/')
+            .then(function(r) { return r.json(); })
+            .then(function(data) { renderFiles(data); })
+            .catch(function(err) {
+                console.error('Ошибка загрузки файлов:', err);
+                document.getElementById('files-content').innerHTML =
+                    '<div class="no-files">Ошибка загрузки файлов</div>';
+            });
+    }
+
+    function renderFiles(data) {
+        var container = document.getElementById('files-content');
+        var countEl = document.getElementById('files-count');
+        var files = data.files || [];
+        var hiddenTypes = data.hidden_types || [];
+
+        countEl.textContent = files.length > 0 ? '(' + files.length + ')' : '';
+
+        if (files.length === 0 && hiddenTypes.length === 0) {
+            container.innerHTML = '<div class="no-files">Файлы не загружены</div>';
+            return;
+        }
+
+        // Группировка по file_type
+        var groups = {};
+        files.forEach(function(f) {
+            if (!groups[f.file_type]) groups[f.file_type] = [];
+            groups[f.file_type].push(f);
+        });
+
+        var html = '';
+
+        FILE_TYPE_ORDER.forEach(function(typeCode) {
+            if (!groups[typeCode]) return;
+            var label = FILE_TYPE_LABELS[typeCode] || typeCode;
+            html += '<div class="file-group">';
+            html += '<div class="file-group-title">' + label + '</div>';
+            groups[typeCode].forEach(function(f) {
+                html += renderFileRow(f);
+            });
+            html += '</div>';
+        });
+
+        // Типы, которых нет в FILE_TYPE_ORDER
+        Object.keys(groups).forEach(function(typeCode) {
+            if (FILE_TYPE_ORDER.indexOf(typeCode) !== -1) return;
+            var label = FILE_TYPE_LABELS[typeCode] || typeCode;
+            html += '<div class="file-group">';
+            html += '<div class="file-group-title">' + label + '</div>';
+            groups[typeCode].forEach(function(f) {
+                html += renderFileRow(f);
+            });
+            html += '</div>';
+        });
+
+        // Предупреждение о скрытых файлах
+        if (hiddenTypes.length > 0) {
+            html += '<div style="padding: 8px 0; font-size: 12px; color: #999; font-style: italic;">';
+            html += '🔒 Некоторые файлы скрыты (' + hiddenTypes.length + ' тип(ов))';
+            html += '</div>';
+        }
+
+        container.innerHTML = html;
+    }
+
+    function renderFileRow(f) {
+        var icon = getFileIcon(f);
+        var versionLabel = f.version > 1 ? ' <span style="color:#4a90e2;font-size:11px;">v' + f.version + '</span>' : '';
+        var html = '<div class="file-row">';
+        html += '<span class="file-icon">' + icon + '</span>';
+        html += '<div class="file-info">';
+        html += '<div class="file-name" onclick="window.location.href=\'/files/' + f.id + '/download/\'">' + escapeHtml(f.original_name) + versionLabel + '</div>';
+        html += '<div class="file-meta">' + f.file_size + ' · ' + f.uploaded_at;
+        if (f.uploaded_by) html += ' · ' + escapeHtml(f.uploaded_by);
+        if (f.description) html += ' · ' + escapeHtml(f.description);
+        html += '</div>';
+        html += '</div>';
+
+        // Кнопки действий
+        html += '<div class="file-actions">';
+        html += '<button onclick="window.location.href=\'/files/' + f.id + '/download/\'" title="Скачать">⬇️</button>';
+        if (CAN_UPLOAD) {
+            html += '<button onclick="openReplaceModal(' + f.id + ', \'' + escapeHtml(f.original_name) + '\', ' + f.version + ')" title="Заменить">🔄</button>';
+        }
+        if (CAN_DELETE) {
+            html += '<button class="btn-del" onclick="deleteFile(' + f.id + ', \'' + escapeHtml(f.original_name) + '\')" title="Удалить">🗑️</button>';
+        }
+        html += '</div>';
+        html += '</div>';
+        return html;
+    }
+
+    function getFileIcon(f) {
+        if (f.is_image) return '🖼️';
+        if (f.is_pdf) return '📕';
+        var name = f.original_name.toLowerCase();
+        if (name.endsWith('.xlsx') || name.endsWith('.xls') || name.endsWith('.csv')) return '📊';
+        if (name.endsWith('.docx') || name.endsWith('.doc')) return '📝';
+        if (name.endsWith('.zip') || name.endsWith('.rar')) return '📦';
+        return '📄';
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(text));
+        return d.innerHTML;
+    }
+
+    // ═══════════════════════════════════════════
+    // Загрузка файла
+    // ═══════════════════════════════════════════
+
+    var uploadForm = document.getElementById('upload-form');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var formData = new FormData(uploadForm);
+            var errorEl = document.getElementById('upload-error');
+            var progressEl = document.getElementById('upload-progress');
+            var barEl = document.getElementById('upload-progress-bar');
+            var submitBtn = document.getElementById('upload-submit-btn');
+
+            errorEl.style.display = 'none';
+            progressEl.style.display = 'block';
+            barEl.style.width = '0%';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Загрузка...';
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/files/upload/');
+
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    barEl.style.width = Math.round(e.loaded / e.total * 100) + '%';
+                }
+            });
+
+            xhr.onload = function() {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '📤 Загрузить';
+                progressEl.style.display = 'none';
+
+                if (xhr.status === 200) {
+                    closeUploadModal();
+                    loadFiles();
+                } else {
+                    try {
+                        var resp = JSON.parse(xhr.responseText);
+                        errorEl.textContent = resp.error || 'Ошибка загрузки';
+                    } catch(e2) {
+                        errorEl.textContent = 'Ошибка загрузки';
+                    }
+                    errorEl.style.display = 'block';
+                }
+            };
+
+            xhr.onerror = function() {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '📤 Загрузить';
+                progressEl.style.display = 'none';
+                errorEl.textContent = 'Ошибка сети';
+                errorEl.style.display = 'block';
+            };
+
+            xhr.send(formData);
+        });
+    }
+
+    // ═══════════════════════════════════════════
+    // Замена файла
+    // ═══════════════════════════════════════════
+
+    var replaceForm = document.getElementById('replace-form');
+    if (replaceForm) {
+        replaceForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var fileId = document.getElementById('replace-file-id').value;
+            var fileInput = document.getElementById('replace-file-input');
+            var errorEl = document.getElementById('replace-error');
+
+            if (!fileInput.files.length) {
+                errorEl.textContent = 'Выберите файл';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('csrfmiddlewaretoken', replaceForm.querySelector('[name=csrfmiddlewaretoken]').value);
+
+            fetch('/files/' + fileId + '/replace/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    closeReplaceModal();
+                    loadFiles();
+                } else {
+                    errorEl.textContent = data.error || 'Ошибка замены';
+                    errorEl.style.display = 'block';
+                }
+            })
+            .catch(function() {
+                errorEl.textContent = 'Ошибка сети';
+                errorEl.style.display = 'block';
+            });
+        });
+    }
+
+    // ═══════════════════════════════════════════
+    // Удаление файла
+    // ═══════════════════════════════════════════
+
+    window.deleteFile = function(fileId, fileName) {
+        if (!confirm('Удалить файл "' + fileName + '"?')) return;
+
+        var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+        var token = csrfToken ? csrfToken.value : '';
+
+        fetch('/files/' + fileId + '/delete/', {
+            method: 'POST',
+            headers: {'X-CSRFToken': token, 'Content-Type': 'application/json'}
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) loadFiles();
+            else alert(data.error || 'Ошибка удаления');
+        })
+        .catch(function() { alert('Ошибка сети'); });
+    };
+
+    // ═══════════════════════════════════════════
+    // Модалки
+    // ═══════════════════════════════════════════
+
+    window.openUploadModal = function() {
+        document.getElementById('upload-modal').style.display = 'flex';
+        document.getElementById('upload-error').style.display = 'none';
+        document.getElementById('upload-progress').style.display = 'none';
+        clearSelectedFile();
+    };
+
+    window.closeUploadModal = function() {
+        document.getElementById('upload-modal').style.display = 'none';
+        document.getElementById('upload-form').reset();
+        clearSelectedFile();
+    };
+
+    window.openReplaceModal = function(fileId, fileName, version) {
+        document.getElementById('replace-modal').style.display = 'flex';
+        document.getElementById('replace-file-id').value = fileId;
+        document.getElementById('replace-file-info').textContent = fileName + ' (v' + version + ')';
+        document.getElementById('replace-error').style.display = 'none';
+        document.getElementById('replace-file-input').value = '';
+    };
+
+    window.closeReplaceModal = function() {
+        document.getElementById('replace-modal').style.display = 'none';
+    };
+
+    // Закрытие по клику на оверлей
+    document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) overlay.style.display = 'none';
+        });
+    });
+
+    // ═══════════════════════════════════════════
+    // Drag-and-drop + выбор файла
+    // ═══════════════════════════════════════════
+
+    window.clearSelectedFile = function() {
+        var input = document.getElementById('upload-file-input');
+        if (input) input.value = '';
+        var textEl = document.getElementById('drop-zone-text');
+        var fileEl = document.getElementById('drop-zone-file');
+        if (textEl) textEl.style.display = 'block';
+        if (fileEl) fileEl.style.display = 'none';
+    };
+
+    function showSelectedFile(file) {
+        document.getElementById('drop-zone-text').style.display = 'none';
+        document.getElementById('drop-zone-file').style.display = 'block';
+        document.getElementById('selected-file-name').textContent = file.name;
+
+        var size = file.size;
+        var units = ['Б', 'КБ', 'МБ', 'ГБ'];
+        var idx = 0;
+        while (size >= 1024 && idx < units.length - 1) { size /= 1024; idx++; }
+        document.getElementById('selected-file-size').textContent = size.toFixed(1) + ' ' + units[idx];
+    }
+
+    var fileInput = document.getElementById('upload-file-input');
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) showSelectedFile(this.files[0]);
+        });
+    }
+
+    var dropZone = document.getElementById('file-drop-zone');
+    if (dropZone) {
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', function() {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                document.getElementById('upload-file-input').files = e.dataTransfer.files;
+                showSelectedFile(e.dataTransfer.files[0]);
+            }
+        });
+    }
+
+    // ═══════════════════════════════════════════
+    // Инициализация
+    // ═══════════════════════════════════════════
+
+    loadFiles();
+
+})();
+</script>
+
+<script>
+function toggleEditPlan(planId) {
+    var row = document.getElementById('edit-plan-' + planId);
+    if (row) row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+</script>
+
+<script>
+function toggleVerificationFields() {
+    const type = document.getElementById('maint-type').value;
+    const fields = document.getElementById('verification-fields');
+    if (type === 'VERIFICATION' || type === 'ATTESTATION') {
+        fields.classList.add('visible');
+    } else {
+        fields.classList.remove('visible');
+    }
+}
+// Init
+toggleVerificationFields();
+</script>
+
+</body>
+</html>

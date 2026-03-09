@@ -274,6 +274,81 @@
             </div>
             {% endif %}
         </div>
+
+        <!-- Допущенные сотрудники ⭐ v3.28.0 -->
+        {% if admitted_by_area %}
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <div class="card-title" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none;">
+                    👥 Допущенные сотрудники
+                </div>
+                {% if can_edit %}
+                <a href="{% url 'responsibility_matrix' %}" class="btn" style="font-size: 13px; padding: 6px 14px; background: #f5f5f5; color: #666; text-decoration: none;">
+                    📊 Управление допусками →
+                </a>
+                {% endif %}
+            </div>
+
+            {% for group in admitted_by_area %}
+            <div style="margin-bottom: 16px;">
+                <div style="font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                    <span class="badge area">{{ group.area_name }}</span>
+                    <span style="font-weight: normal; text-transform: none;">{{ group.count }} допущ.</span>
+                    {% if group.excluded_count %}
+                    <span style="font-weight: normal; text-transform: none; color: #c5221f;">{{ group.excluded_count }} исключ.</span>
+                    {% endif %}
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                    {% for u in group.users %}
+                    {% if not u.excluded %}
+                    <span class="admitted-user-badge" data-uid="{{ u.user_id }}" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; background: #f8f9fa; border-radius: 16px; font-size: 13px; color: #333; border: 1px solid #e8e8e8;">
+                        <a href="{% url 'employee_detail' u.user_id %}" style="color: #333; text-decoration: none;">
+                            {{ u.last_name }} {{ u.first_name }}
+                        </a>
+                        {% if u.lab_display %}<span style="font-size: 11px; color: #999;">· {{ u.lab_display }}</span>{% endif %}
+                        {% if can_edit_exclusions %}
+                        <button type="button" onclick="excludeUser({{ u.user_id }}, '{{ u.last_name|escapejs }} {{ u.first_name|escapejs }}')"
+                                style="background: none; border: none; cursor: pointer; font-size: 11px; color: #ccc; margin-left: 2px;" title="Исключить из допуска">✕</button>
+                        {% endif %}
+                    </span>
+                    {% endif %}
+                    {% endfor %}
+
+                    {# Исключённые — серые, зачёркнутые #}
+                    {% for u in group.users %}
+                    {% if u.excluded %}
+                    <span class="admitted-user-badge excluded" data-uid="{{ u.user_id }}" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; background: #fce8e6; border-radius: 16px; font-size: 13px; color: #999; border: 1px solid #f5c6cb; text-decoration: line-through;">
+                        {{ u.last_name }} {{ u.first_name }}
+                        {% if u.lab_display %}<span style="font-size: 11px;">· {{ u.lab_display }}</span>{% endif %}
+                        {% if can_edit_exclusions %}
+                        <button type="button" onclick="includeUser({{ u.user_id }}, '{{ u.last_name|escapejs }} {{ u.first_name|escapejs }}')"
+                                style="background: none; border: none; cursor: pointer; font-size: 12px; color: #137333; margin-left: 2px;" title="Вернуть допуск">↩</button>
+                        {% endif %}
+                    </span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% elif standard_area_ids %}
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <div class="card-title" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none;">
+                    👥 Допущенные сотрудники
+                </div>
+                {% if can_edit %}
+                <a href="{% url 'responsibility_matrix' %}" class="btn" style="font-size: 13px; padding: 6px 14px; background: #f5f5f5; color: #666; text-decoration: none;">
+                    📊 Управление допусками →
+                </a>
+                {% endif %}
+            </div>
+            <div style="color: #999; font-size: 13px; padding: 8px 0;">
+                Нет допущенных сотрудников. Назначьте через
+                <a href="{% url 'responsibility_matrix' %}" style="color: #667eea;">матрицу ответственности</a>.
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Модалка показателя -->
@@ -518,6 +593,51 @@
 
     document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeParamModal(); } });
     document.getElementById('paramModal').addEventListener('click', function(e) { if (e.target === this) closeParamModal(); });
+
+    // ⭐ v3.28.0: Исключения из допуска
+    function excludeUser(userId, userName) {
+        const reason = prompt(`Исключить «${userName}» из допуска к этому стандарту?\n\nУкажите причину (необязательно):`);
+        if (reason === null) return; // отмена
+
+        fetch('/api/standards/toggle-exclusion/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+            body: JSON.stringify({
+                standard_id: STD_ID,
+                user_id: userId,
+                exclude: true,
+                reason: reason || '',
+            }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { showToast(data.error, 'error'); return; }
+            showToast(data.message, 'success');
+            setTimeout(() => location.reload(), 400);
+        })
+        .catch(() => showToast('Ошибка', 'error'));
+    }
+
+    function includeUser(userId, userName) {
+        if (!confirm(`Вернуть допуск для «${userName}»?`)) return;
+
+        fetch('/api/standards/toggle-exclusion/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': CSRF},
+            body: JSON.stringify({
+                standard_id: STD_ID,
+                user_id: userId,
+                exclude: false,
+            }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { showToast(data.error, 'error'); return; }
+            showToast(data.message, 'success');
+            setTimeout(() => location.reload(), 400);
+        })
+        .catch(() => showToast('Ошибка', 'error'));
+    }
     </script>
 </body>
 </html>

@@ -45,6 +45,7 @@ from .equipment import (
     EquipmentMaintenanceLog,    # ⭐ v3.24.0
     MaintenanceFrequencyUnit,   # ⭐ v3.24.0
     MaintenanceLogStatus,       # ⭐ v3.24.0
+    VerificationResult,         # ⭐ v3.29.0
 )
 
 # 5. Образцы (зависят от всех предыдущих)

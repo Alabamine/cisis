@@ -1,0 +1,918 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Реестр оборудования — CISIS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        /* ═══════════════════════ HEADER ═══════════════════════ */
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header h1 { font-size: 24px; color: #333; margin-bottom: 10px; }
+        .user-info { color: #666; font-size: 14px; }
+        .back-btn {
+            float: right;
+            color: white; background: #6c757d;
+            border: none; padding: 8px 16px; border-radius: 4px;
+            cursor: pointer; text-decoration: none; display: inline-block;
+        }
+        .back-btn:hover { background: #5a6268; }
+
+        /* ═══════════════════════ TOOLBAR ═══════════════════════ */
+        .toolbar {
+            background: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .toolbar-left { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .toolbar-right { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+
+        .toolbar-btn {
+            color: white; border: none;
+            padding: 7px 14px; border-radius: 6px;
+            cursor: pointer; font-size: 12px; font-weight: 500;
+            display: flex; align-items: center; gap: 6px;
+            transition: all 0.2s; text-decoration: none;
+        }
+        .btn-blue { background: #4a90e2; }
+        .btn-blue:hover { background: #357abd; }
+        .btn-gray { background: #6c757d; }
+        .btn-gray:hover { background: #5a6268; }
+
+        .filter-badge {
+            background: #ffc107; color: #333;
+            padding: 2px 8px; border-radius: 12px;
+            font-size: 12px; font-weight: 600;
+            min-width: 20px; text-align: center;
+        }
+
+        .stats { display: flex; gap: 15px; font-size: 14px; color: #666; flex-wrap: wrap; }
+        .stats strong { font-weight: 600; }
+        .stat-operational { color: #28a745; }
+        .stat-maintenance { color: #ffc107; }
+        .stat-calibration { color: #17a2b8; }
+        .stat-total { color: #4a90e2; }
+
+        /* ═══════════════════════ MODAL ═══════════════════════ */
+        .modal-overlay {
+            display: none;
+            position: fixed; z-index: 1000;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            animation: fadeIn 0.2s;
+        }
+        .modal-overlay.active {
+            display: flex; align-items: center; justify-content: center;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .modal-content {
+            background: white; border-radius: 12px;
+            width: 90%; max-width: 960px; max-height: 85vh;
+            display: flex; flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal-header {
+            padding: 20px 25px; border-bottom: 1px solid #e0e0e0;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-header h2 { font-size: 20px; color: #333; margin: 0; }
+
+        .close-btn {
+            background: none; border: none; font-size: 24px;
+            color: #999; cursor: pointer; width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 4px; transition: all 0.2s;
+        }
+        .close-btn:hover { background: #f0f0f0; color: #333; }
+
+        .modal-body {
+            padding: 25px; overflow-y: auto;
+            max-height: calc(85vh - 160px);
+        }
+
+        .modal-footer {
+            padding: 15px 25px; border-top: 1px solid #e0e0e0;
+            display: flex; gap: 10px; justify-content: flex-end;
+        }
+        .modal-btn {
+            padding: 10px 20px; border: none; border-radius: 6px;
+            cursor: pointer; font-size: 14px; font-weight: 500;
+        }
+        .modal-btn-primary { background: #4a90e2; color: white; }
+        .modal-btn-primary:hover { background: #357abd; }
+        .modal-btn-secondary { background: #e0e0e0; color: #333; }
+        .modal-btn-secondary:hover { background: #d0d0d0; }
+        .modal-btn-danger { background: #dc3545; color: white; }
+        .modal-btn-danger:hover { background: #c82333; }
+
+        /* ═══════════════════════ FILTERS GRID ═══════════════════════ */
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .filter-block {
+            border: 1px solid #e0e0e0; border-radius: 8px;
+            padding: 15px; background: #fafafa;
+        }
+        .filter-block h3 {
+            font-size: 14px; font-weight: 600; color: #555;
+            margin-bottom: 10px;
+        }
+        .filter-options {
+            display: flex; flex-direction: column; gap: 6px;
+            max-height: 200px; overflow-y: auto;
+        }
+        .filter-option {
+            display: flex; align-items: center; gap: 8px; cursor: pointer;
+        }
+        .filter-option input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+        .filter-option label {
+            font-size: 13px; color: #333; cursor: pointer; user-select: none;
+        }
+        .filter-option.dimmed { opacity: 0.45; }
+        .filter-input {
+            width: 100%; padding: 8px 10px; border: 1px solid #ddd;
+            border-radius: 4px; font-size: 13px;
+        }
+        .filter-input:focus { border-color: #4a90e2; outline: none; }
+
+        /* ═══════════════════════ COLUMN SETTINGS ═══════════════════════ */
+        .columns-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        .column-item {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 12px; border-radius: 6px;
+            cursor: grab; transition: background 0.15s;
+            border: 2px solid transparent;
+            background: white;
+        }
+        .column-item:hover { background: #f0f4ff; }
+        .column-item.dragging {
+            opacity: 0.4; background: #e8f0fe;
+            border: 2px dashed #4a90e2;
+        }
+        .column-item.drag-over {
+            border-top: 2px solid #4a90e2;
+        }
+        .column-item .drag-handle {
+            color: #ccc; font-size: 16px; cursor: grab;
+            user-select: none; flex-shrink: 0;
+            transition: color 0.15s;
+        }
+        .column-item:hover .drag-handle { color: #888; }
+        .column-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; }
+        .column-item label { font-size: 14px; color: #333; cursor: pointer; user-select: none; flex: 1; }
+
+        /* ═══════════════════════ TABLE ═══════════════════════ */
+        .equipment-table {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .table-wrapper {
+            overflow: auto;
+            max-height: calc(100vh - 280px);
+            min-height: 300px;
+            /* Стилизация скроллбара */
+            scrollbar-width: thin;
+            scrollbar-color: #b0b0b0 #f0f0f0;
+        }
+        .table-wrapper::-webkit-scrollbar { width: 10px; height: 10px; }
+        .table-wrapper::-webkit-scrollbar-track { background: #f0f0f0; }
+        .table-wrapper::-webkit-scrollbar-thumb {
+            background: #b0b0b0; border-radius: 5px;
+            border: 2px solid #f0f0f0;
+        }
+        .table-wrapper::-webkit-scrollbar-thumb:hover { background: #888; }
+        .table-wrapper::-webkit-scrollbar-corner { background: #f0f0f0; }
+
+        table {
+            width: max-content;
+            min-width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        thead { background: #4a90e2; color: white; }
+        th {
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 500;
+            font-size: 12px;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #4a90e2;
+            min-width: 80px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        th:hover { background: #357abd; }
+        th .sort-arrow { margin-left: 4px; font-size: 11px; opacity: 0.6; }
+        th.sorted .sort-arrow { opacity: 1; }
+
+        /* ═══════════════════════ RESIZE HANDLE ═══════════════════════ */
+        th .resize-handle {
+            position: absolute;
+            right: 0; top: 0; bottom: 0;
+            width: 6px;
+            cursor: col-resize;
+            background: transparent;
+            z-index: 10;
+            transition: background 0.15s;
+        }
+        th .resize-handle:hover,
+        th .resize-handle.active {
+            background: rgba(255,255,255,0.4);
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        tbody tr { cursor: pointer; }
+        tbody tr:hover { background: #f8f9fa; }
+
+        .eq-link { color: #4a90e2; text-decoration: none; font-weight: 500; }
+        .eq-link:hover { text-decoration: underline; }
+
+        /* ═══════════════════════ STATUS BADGES ═══════════════════════ */
+        .badge-status {
+            display: inline-block; padding: 3px 10px;
+            border-radius: 4px; font-size: 12px; font-weight: 500;
+            white-space: nowrap;
+        }
+        .badge-OPERATIONAL { background: #d4edda; color: #155724; }
+        .badge-MAINTENANCE { background: #fff3cd; color: #856404; }
+        .badge-CALIBRATION { background: #d1ecf1; color: #0c5460; }
+        .badge-RETIRED { background: #f8d7da; color: #721c24; }
+
+        .badge-type {
+            display: inline-block; padding: 2px 8px;
+            border-radius: 3px; font-size: 11px; font-weight: 600;
+        }
+        .badge-type-СИ { background: #e3f2fd; color: #1565c0; }
+        .badge-type-ИО { background: #fce4ec; color: #c62828; }
+        .badge-type-ВО { background: #f3e5f5; color: #6a1b9a; }
+
+        .no-data {
+            padding: 60px 40px; text-align: center; color: #999;
+        }
+        .no-data p { font-size: 16px; margin-bottom: 8px; }
+
+        /* ═══════════════════════ PAGINATION ═══════════════════════ */
+        .pagination-bar {
+            background: white; padding: 15px 20px;
+            border-top: 1px solid #eee;
+            display: flex; justify-content: space-between;
+            align-items: center; flex-wrap: wrap; gap: 10px;
+        }
+        .pagination-info { font-size: 13px; color: #666; }
+        .pagination-links { display: flex; gap: 4px; align-items: center; }
+        .page-link {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 36px; height: 36px; padding: 0 8px;
+            border: 1px solid #ddd; border-radius: 6px;
+            text-decoration: none; color: #333; font-size: 13px;
+            transition: all 0.15s;
+        }
+        .page-link:hover { background: #e8f0fe; border-color: #4a90e2; color: #4a90e2; }
+        .page-link.active { background: #4a90e2; color: white; border-color: #4a90e2; }
+        .page-link.disabled { opacity: 0.4; pointer-events: none; }
+        .page-ellipsis { color: #999; padding: 0 6px; font-size: 13px; }
+
+        .resize-tooltip {
+            display: none;
+            position: fixed;
+            background: #333; color: white;
+            padding: 4px 8px; border-radius: 4px;
+            font-size: 11px; z-index: 9999;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .toolbar { flex-direction: column; align-items: stretch; }
+            .toolbar-left, .toolbar-right { justify-content: center; }
+            .filters-grid { grid-template-columns: 1fr; }
+            .columns-list { max-height: 50vh; }
+        }
+
+        .tabs { display: flex; gap: 0; margin-bottom: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; }
+        .tab { padding: 12px 24px; font-size: 14px; font-weight: 500; color: #666; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.2s; }
+        .tab:hover { color: #333; background: #f8f9fa; }
+        .tab.active { color: #4a90e2; border-bottom-color: #4a90e2; background: #f0f7ff; }
+    </style>
+</head>
+<body>
+
+<!-- ═══════════════ ТАБЫ ═══════════════ -->
+<div class="tabs">
+    <a href="{% url 'equipment_list' %}" class="tab active">🔬 Реестр оборудования</a>
+    <a href="{% url 'maintenance' %}" class="tab">📋 Планы ТО</a>
+    <a href="{% url 'equipment_maintenance_log' %}" class="tab">🔰 Поверки и аттестации</a>
+</div>
+
+<!-- ═══════════════════════ HEADER ═══════════════════════ -->
+<div class="header">
+    <a href="{% url 'workspace_home' %}" class="back-btn">← К журналам</a>
+    <h1>🔬 Реестр оборудования</h1>
+    <div class="user-info">
+        {{ user.full_name }} ({{ user.get_role_display }})
+        {% if user.laboratory %} — {{ user.laboratory.name }}{% endif %}
+    </div>
+</div>
+
+<!-- ═══════════════════════ TOOLBAR ═══════════════════════ -->
+<div class="toolbar">
+    <div class="toolbar-left">
+        <button class="toolbar-btn btn-blue" onclick="openModal('filter-modal')">
+            🔍 Фильтры
+            {% if active_filter_count > 0 %}
+                <span class="filter-badge">{{ active_filter_count }}</span>
+            {% endif %}
+        </button>
+        <button class="toolbar-btn btn-gray" onclick="openModal('columns-modal')">
+            ⚙️ Столбцы
+        </button>
+        <button class="toolbar-btn btn-gray" onclick="exportXlsx()" title="Экспорт в Excel">
+            📥 Excel
+        </button>
+    </div>
+    <div class="toolbar-right">
+        <div class="stats">
+            <span>В работе: <strong class="stat-operational">{{ stats.operational }}</strong></span>
+            {% if stats.maintenance %}
+            <span>На ТО: <strong class="stat-maintenance">{{ stats.maintenance }}</strong></span>
+            {% endif %}
+            {% if stats.calibration %}
+            <span>На поверке: <strong class="stat-calibration">{{ stats.calibration }}</strong></span>
+            {% endif %}
+            <span>Всего: <strong class="stat-total">{{ total_count }}</strong></span>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════ FILTER MODAL ═══════════════════════ -->
+<div id="filter-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>🔍 Фильтры</h2>
+            <button class="close-btn" onclick="closeModal('filter-modal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="filters-grid" id="filters-container"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-danger" onclick="resetFilters()">Сбросить все</button>
+            <button class="modal-btn modal-btn-secondary" onclick="closeModal('filter-modal')">Отмена</button>
+            <button class="modal-btn modal-btn-primary" onclick="applyFilters()">Применить</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════ COLUMNS MODAL ═══════════════════════ -->
+<div id="columns-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>⚙️ Настройка столбцов</h2>
+            <button class="close-btn" onclick="closeModal('columns-modal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <p style="color: #666; font-size: 13px; margin-bottom: 15px;">
+                Выберите столбцы для отображения. Перетаскивайте строки для изменения порядка.
+            </p>
+            <div class="columns-list" id="columns-list">
+                {% for col in all_available_columns %}
+                <div class="column-item" draggable="true" data-code="{{ col.code }}">
+                    <span class="drag-handle">☰</span>
+                    <input type="checkbox"
+                           id="col-{{ col.code }}"
+                           value="{{ col.code }}"
+                           class="column-checkbox"
+                           {% if col.selected %}checked{% endif %}>
+                    <label for="col-{{ col.code }}">{{ col.name }}</label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn modal-btn-secondary" onclick="resetColumns()">По умолчанию</button>
+            <button class="modal-btn modal-btn-secondary" onclick="closeModal('columns-modal')">Отмена</button>
+            <button class="modal-btn modal-btn-primary" onclick="saveColumns()">Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════ TABLE ═══════════════════════ -->
+<div class="equipment-table">
+    {% if equipment_items %}
+    <div class="table-wrapper" id="table-wrapper">
+        <table id="equipment-tbl">
+            <thead>
+                <tr>
+                    {% for column in visible_columns %}
+                    <th data-col="{{ column.code }}"
+                        onclick="sortBy('{{ column.code }}')"
+                        class="{% if current_sort == column.code %}sorted{% endif %}">
+                        <span class="th-label">{{ column.name }}</span>
+                        <span class="sort-arrow">
+                            {% if current_sort == column.code %}
+                                {% if current_dir == 'asc' %}▲{% else %}▼{% endif %}
+                            {% else %}
+                                ⇅
+                            {% endif %}
+                        </span>
+                        <div class="resize-handle" data-col="{{ column.code }}"></div>
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for eq in equipment_items %}
+                <tr onclick="window.location='{% url 'equipment_detail' eq.id %}'">
+                    {% for column in visible_columns %}
+
+                        {% if column.code == 'accounting_number' %}
+                            <td>
+                                <a href="{% url 'equipment_detail' eq.id %}" class="eq-link"
+                                   onclick="event.stopPropagation()">
+                                    {{ eq.accounting_number }}
+                                </a>
+                            </td>
+
+                        {% elif column.code == 'equipment_type' %}
+                            <td>
+                                <span class="badge-type badge-type-{{ eq.equipment_type }}">
+                                    {{ eq.get_equipment_type_display }}
+                                </span>
+                            </td>
+
+                        {% elif column.code == 'name' %}
+                            <td title="{{ eq.name }}">{{ eq.name|truncatechars:50 }}</td>
+
+                        {% elif column.code == 'inventory_number' %}
+                            <td>{{ eq.inventory_number|default:"—" }}</td>
+
+                        {% elif column.code == 'laboratory' %}
+                            <td>{{ eq.laboratory.code_display|default:"—" }}</td>
+
+                        {% elif column.code == 'status' %}
+                            <td>
+                                <span class="badge-status badge-{{ eq.status }}">
+                                    {{ eq.get_status_display }}
+                                </span>
+                            </td>
+
+                        {% elif column.code == 'responsible_person' %}
+                            <td>{% if eq.responsible_person %}{{ eq.responsible_person.full_name }}{% else %}—{% endif %}</td>
+
+                        {% elif column.code == 'substitute_person' %}
+                            <td>{% if eq.substitute_person %}{{ eq.substitute_person.full_name }}{% else %}—{% endif %}</td>
+
+                        {% elif column.code == 'accreditation_areas' %}
+                            <td>
+                                {% for area in eq.accreditation_areas.all %}
+                                    {{ area.name }}{% if not forloop.last %}, {% endif %}
+                                {% empty %}—{% endfor %}
+                            </td>
+
+                        {% elif column.code == 'ownership' %}
+                            <td>{{ eq.ownership|default:"—" }}</td>
+
+                        {% elif column.code == 'ownership_doc_number' %}
+                            <td title="{{ eq.ownership_doc_number }}">{{ eq.ownership_doc_number|truncatechars:30|default:"—" }}</td>
+
+                        {% elif column.code == 'manufacturer' %}
+                            <td>{{ eq.manufacturer|default:"—" }}</td>
+
+                        {% elif column.code == 'year_of_manufacture' %}
+                            <td>{{ eq.year_of_manufacture|default:"—" }}</td>
+
+                        {% elif column.code == 'factory_number' %}
+                            <td>{{ eq.factory_number|default:"—" }}</td>
+
+                        {% elif column.code == 'state_registry_number' %}
+                            <td title="{{ eq.state_registry_number }}">{{ eq.state_registry_number|truncatechars:30|default:"—" }}</td>
+
+                        {% elif column.code == 'metrology_interval' %}
+                            <td>{% if eq.metrology_interval %}{{ eq.metrology_interval }} мес.{% else %}—{% endif %}</td>
+
+                        {% elif column.code == 'technical_documentation' %}
+                            <td title="{{ eq.technical_documentation }}">{{ eq.technical_documentation|truncatechars:40|default:"—" }}</td>
+
+                        {% elif column.code == 'intended_use' %}
+                            <td title="{{ eq.intended_use }}">{{ eq.intended_use|truncatechars:40|default:"—" }}</td>
+
+                        {% elif column.code == 'metrology_doc' %}
+                            <td title="{{ eq.metrology_doc }}">{{ eq.metrology_doc|truncatechars:40|default:"—" }}</td>
+
+                        {% elif column.code == 'technical_specs' %}
+                            <td title="{{ eq.technical_specs }}">{{ eq.technical_specs|truncatechars:40|default:"—" }}</td>
+
+                        {% elif column.code == 'software' %}
+                            <td title="{{ eq.software }}">{{ eq.software|truncatechars:40|default:"—" }}</td>
+
+                        {% elif column.code == 'operating_conditions' %}
+                            <td title="{{ eq.operating_conditions }}">{{ eq.operating_conditions|truncatechars:40|default:"—" }}</td>
+
+                        {% elif column.code == 'commissioning_info' %}
+                            <td title="{{ eq.commissioning_info }}">{{ eq.commissioning_info|truncatechars:40|default:"—" }}</td>
+
+                        {% elif column.code == 'condition_on_receipt' %}
+                            <td title="{{ eq.condition_on_receipt }}">{{ eq.condition_on_receipt|truncatechars:40|default:"—" }}</td>
+
+                        {% elif column.code == 'modifications' %}
+                            <td title="{{ eq.modifications }}">{{ eq.modifications|truncatechars:40|default:"—" }}</td>
+
+                        {% elif column.code == 'notes' %}
+                            <td title="{{ eq.notes }}">{{ eq.notes|truncatechars:40|default:"—" }}</td>
+
+                        {% else %}
+                            <td>—</td>
+                        {% endif %}
+
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ═══════════════════════ PAGINATION ═══════════════════════ -->
+    <div class="pagination-bar">
+        <div class="pagination-info">
+            {{ page_obj.start_index }}–{{ page_obj.end_index }} из {{ total_count }}
+            <span style="margin-left: 12px; font-size: 12px; color: #888;">
+                Строк: <select style="padding:2px 6px;border:1px solid #ddd;border-radius:4px;font-size:12px;cursor:pointer;" onchange="changePerPage(this.value)">
+                    {% for opt in per_page_options %}<option value="{{ opt }}" {% if opt == per_page %}selected{% endif %}>{{ opt }}</option>{% endfor %}
+                </select>
+            </span>
+        </div>
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="pagination-links">
+            {% if page_obj.has_previous %}
+                <a href="?page=1{% if query_string %}&{{ query_string }}{% endif %}" class="page-link" title="Первая">«</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if query_string %}&{{ query_string }}{% endif %}" class="page-link">‹</a>
+            {% else %}
+                <span class="page-link disabled">«</span>
+                <span class="page-link disabled">‹</span>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <span class="page-link active">{{ num }}</span>
+                {% elif num > page_obj.number|add:"-4" and num < page_obj.number|add:"4" %}
+                    <a href="?page={{ num }}{% if query_string %}&{{ query_string }}{% endif %}" class="page-link">{{ num }}</a>
+                {% elif num == page_obj.number|add:"-4" or num == page_obj.number|add:"4" %}
+                    <span class="page-ellipsis">…</span>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if query_string %}&{{ query_string }}{% endif %}" class="page-link">›</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if query_string %}&{{ query_string }}{% endif %}" class="page-link" title="Последняя">»</a>
+            {% else %}
+                <span class="page-link disabled">›</span>
+                <span class="page-link disabled">»</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    {% else %}
+    <div class="no-data">
+        <p>Оборудование не найдено</p>
+        {% if active_filter_count > 0 %}
+            <small>Попробуйте изменить или сбросить фильтры</small>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="resize-tooltip" id="resize-tooltip"></div>
+
+<!-- ═══════════════════════ JAVASCRIPT ═══════════════════════ -->
+<script>
+    const availableFilters = {{ available_filters|safe }};
+    const currentFilters = {{ current_filters|safe }};
+    const csrfToken = '{{ csrf_token }}';
+    let savedColumnWidths = {{ column_widths|safe }};
+
+    // ─── Модальные окна ───
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+        modal.addEventListener('click', e => { if (e.target === modal) closeModal(modal.id); });
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.active').forEach(m => closeModal(m.id));
+    });
+
+    // ─── Сортировка ───
+    function sortBy(field) {
+        const params = new URLSearchParams(window.location.search);
+        const currentSort = params.get('sort');
+        const currentDir = params.get('dir') || 'asc';
+        if (currentSort === field) {
+            params.set('dir', currentDir === 'asc' ? 'desc' : 'asc');
+        } else {
+            params.set('sort', field);
+            params.set('dir', 'asc');
+        }
+        params.delete('page');
+        window.location.search = params.toString();
+    }
+
+    // ─── Фильтры ───
+    function renderFilters() {
+        const container = document.getElementById('filters-container');
+        if (!container) return;
+        container.innerHTML = '';
+        for (const [code, config] of Object.entries(availableFilters)) {
+            const block = document.createElement('div');
+            block.className = 'filter-block';
+            if (config.type === 'select') {
+                const options = config.options || [];
+                if (options.length === 0) continue;
+                const currentValues = currentFilters[code] || [];
+                block.innerHTML = `<h3>${config.label}</h3>
+                    <div class="filter-options">
+                        ${options.map(opt => `<div class="filter-option">
+                            <input type="checkbox" id="f-${code}-${opt.value}" data-filter="${code}"
+                                   value="${opt.value}" ${currentValues.includes(opt.value) ? 'checked' : ''}>
+                            <label for="f-${code}-${opt.value}">${opt.label}</label>
+                        </div>`).join('')}
+                    </div>`;
+            } else if (config.type === 'text') {
+                const currentVal = currentFilters[code + '_search'] || '';
+                block.innerHTML = `<h3>${config.label}</h3>
+                    <input type="text" class="filter-input" id="ft-${code}" placeholder="Поиск..." value="${currentVal}">`;
+            }
+            container.appendChild(block);
+        }
+        container.querySelectorAll('input[type="checkbox"][data-filter]').forEach(cb => {
+            cb.addEventListener('change', (e) => updateCascadingFilters(e.target.dataset.filter));
+        });
+    }
+
+    async function updateCascadingFilters(changedFilter) {
+        const params = buildFilterParams();
+        try {
+            const resp = await fetch(`{% url 'equipment_filter_options' %}?${params.toString()}`);
+            const options = await resp.json();
+            for (const [code, config] of Object.entries(availableFilters)) {
+                if (config.type !== 'select' || !options[code] || code === changedFilter) continue;
+                const optionValues = new Set(options[code].map(o => o.value));
+                document.querySelectorAll(`input[data-filter="${code}"]`).forEach(cb => {
+                    const item = cb.closest('.filter-option');
+                    if (!item) return;
+                    item.style.display = '';
+                    (cb.checked || optionValues.has(cb.value)) ? item.classList.remove('dimmed') : item.classList.add('dimmed');
+                });
+            }
+        } catch (e) { console.error('Ошибка каскадных фильтров:', e); }
+    }
+
+    function buildFilterParams() {
+        const params = new URLSearchParams();
+        document.querySelectorAll('#filters-container input[type="checkbox"][data-filter]:checked').forEach(cb => {
+            params.append(cb.dataset.filter, cb.value);
+        });
+        for (const [code, config] of Object.entries(availableFilters)) {
+            if (config.type === 'text') {
+                const input = document.getElementById(`ft-${code}`);
+                if (input && input.value.trim()) params.set(code + '_search', input.value.trim());
+            }
+        }
+        return params;
+    }
+
+    function applyFilters() {
+        const params = buildFilterParams();
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('sort')) params.set('sort', urlParams.get('sort'));
+        if (urlParams.has('dir')) params.set('dir', urlParams.get('dir'));
+        window.location.search = params.toString();
+    }
+
+    function resetFilters() {
+        const params = new URLSearchParams();
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('sort')) params.set('sort', urlParams.get('sort'));
+        if (urlParams.has('dir')) params.set('dir', urlParams.get('dir'));
+        window.location.search = params.toString();
+    }
+
+    // ─── Столбцы ───
+    // ─── Столбцы: drag-and-drop ───
+    (function initColumnDragDrop() {
+        const list = document.getElementById('columns-list');
+        if (!list) return;
+
+        let dragItem = null;
+
+        list.addEventListener('dragstart', (e) => {
+            const item = e.target.closest('.column-item');
+            if (!item) return;
+            dragItem = item;
+            item.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', '');
+        });
+
+        list.addEventListener('dragend', (e) => {
+            const item = e.target.closest('.column-item');
+            if (item) item.classList.remove('dragging');
+            list.querySelectorAll('.column-item').forEach(el => el.classList.remove('drag-over'));
+            dragItem = null;
+        });
+
+        list.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const target = e.target.closest('.column-item');
+            if (!target || target === dragItem) return;
+
+            list.querySelectorAll('.column-item').forEach(el => el.classList.remove('drag-over'));
+            target.classList.add('drag-over');
+        });
+
+        list.addEventListener('dragleave', (e) => {
+            const target = e.target.closest('.column-item');
+            if (target) target.classList.remove('drag-over');
+        });
+
+        list.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const target = e.target.closest('.column-item');
+            if (!target || !dragItem || target === dragItem) return;
+
+            // Определяем позицию
+            const items = Array.from(list.querySelectorAll('.column-item'));
+            const dragIdx = items.indexOf(dragItem);
+            const targetIdx = items.indexOf(target);
+
+            if (dragIdx < targetIdx) {
+                target.after(dragItem);
+            } else {
+                target.before(dragItem);
+            }
+
+            list.querySelectorAll('.column-item').forEach(el => el.classList.remove('drag-over'));
+        });
+
+        // Предотвращаем drag при клике на чекбокс
+        list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('mousedown', (e) => e.stopPropagation());
+        });
+    })();
+
+    async function saveColumns() {
+        // Порядок определяется текущим расположением элементов в DOM
+        const items = document.querySelectorAll('#columns-list .column-item');
+        const selected = [];
+        items.forEach(item => {
+            const cb = item.querySelector('.column-checkbox');
+            if (cb && cb.checked) selected.push(cb.value);
+        });
+
+        if (selected.length === 0) { alert('Выберите хотя бы один столбец'); return; }
+        try {
+            const resp = await fetch('{% url "save_equipment_columns" %}', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                body: JSON.stringify({columns: selected}),
+            });
+            if (resp.ok) window.location.reload();
+            else { const data = await resp.json(); alert('Ошибка: ' + (data.error || 'Неизвестная ошибка')); }
+        } catch (e) { alert('Ошибка сохранения: ' + e.message); }
+    }
+
+    function resetColumns() {
+        fetch('{% url "save_equipment_columns" %}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+            body: JSON.stringify({columns: ['__reset__']}),
+        }).then(() => window.location.reload());
+    }
+
+    function exportXlsx() {
+        const params = new URLSearchParams(window.location.search);
+        params.delete('page');
+        window.location.href = '{% url "export_equipment_xlsx" %}?' + params.toString();
+    }
+
+    // ═══════════════════════ Resize столбцов ═══════════════════════
+    (function initColumnResize() {
+        const table = document.getElementById('equipment-tbl');
+        if (!table) return;
+        const headers = table.querySelectorAll('th');
+        const tooltip = document.getElementById('resize-tooltip');
+        let resizing = null, startX = 0, startWidth = 0, saveTimeout = null;
+
+        headers.forEach(th => {
+            const col = th.dataset.col;
+            if (col && savedColumnWidths[col]) th.style.width = savedColumnWidths[col] + 'px';
+        });
+
+        document.querySelectorAll('.resize-handle').forEach(handle => {
+            handle.addEventListener('mousedown', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                const th = handle.closest('th');
+                resizing = th; startX = e.pageX; startWidth = th.offsetWidth;
+                handle.classList.add('active');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+            });
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!resizing) return;
+            const newWidth = Math.max(60, startWidth + (e.pageX - startX));
+            resizing.style.width = newWidth + 'px';
+            tooltip.style.display = 'block';
+            tooltip.style.left = e.pageX + 10 + 'px';
+            tooltip.style.top = e.pageY - 20 + 'px';
+            tooltip.textContent = newWidth + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!resizing) return;
+            const col = resizing.dataset.col;
+            const width = resizing.offsetWidth;
+            resizing.querySelector('.resize-handle')?.classList.remove('active');
+            resizing = null;
+            document.body.style.cursor = ''; document.body.style.userSelect = '';
+            tooltip.style.display = 'none';
+            if (col) {
+                savedColumnWidths[col] = width;
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    fetch('{% url "save_equipment_column_widths" %}', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken},
+                        body: JSON.stringify({widths: savedColumnWidths}),
+                    }).catch(err => console.error('Ошибка сохранения ширин:', err));
+                }, 500);
+            }
+        });
+    })();
+
+    renderFilters();
+
+    function changePerPage(value) {
+        const params = new URLSearchParams(window.location.search);
+        params.set('per_page', value);
+        params.delete('page');
+        window.location.search = params.toString();
+    }
+</script>
+</body>
+</html>

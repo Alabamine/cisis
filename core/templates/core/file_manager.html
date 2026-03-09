@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Планы ТО — CISIS</title>
+    <title>Файловый менеджер — CISIS</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
@@ -21,6 +21,7 @@
         .tab { padding: 12px 24px; font-size: 14px; font-weight: 500; color: #666; text-decoration: none; border-bottom: 3px solid transparent; transition: all 0.2s; }
         .tab:hover { color: #333; background: #f8f9fa; }
         .tab.active { color: #4a90e2; border-bottom-color: #4a90e2; background: #f0f7ff; }
+        .tab.disabled { color: #bbb; cursor: default; pointer-events: none; }
 
         /* ═══════════════ TOOLBAR ═══════════════ */
         .toolbar { background: white; padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
@@ -30,16 +31,15 @@
         .btn-blue { background: #4a90e2; } .btn-blue:hover { background: #357abd; }
         .btn-gray { background: #6c757d; } .btn-gray:hover { background: #5a6268; }
         .filter-badge { background: #ffc107; color: #333; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; min-width: 20px; text-align: center; }
-        .stats { display: flex; gap: 15px; font-size: 13px; color: #666; flex-wrap: wrap; }
+        .stats { display: flex; gap: 12px; font-size: 13px; color: #666; flex-wrap: wrap; }
         .stats strong { font-weight: 600; }
-        .stat-overdue { color: #dc3545; }
         .stat-total { color: #4a90e2; }
 
         /* ═══════════════ MODAL ═══════════════ */
         .modal-overlay { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); animation: fadeIn 0.2s; }
         .modal-overlay.active { display: flex; align-items: center; justify-content: center; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .modal-content { background: white; border-radius: 12px; width: 90%; max-width: 700px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,0.3); animation: slideUp 0.3s; }
+        .modal-content { background: white; border-radius: 12px; width: 90%; max-width: 800px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,0.3); animation: slideUp 0.3s; }
         @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .modal-header { padding: 20px 25px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center; }
         .modal-header h2 { font-size: 20px; color: #333; margin: 0; }
@@ -58,11 +58,10 @@
         .filter-block h3 { font-size: 14px; font-weight: 600; color: #555; margin-bottom: 10px; }
         .filter-input { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; font-family: inherit; }
         .filter-input:focus { border-color: #4a90e2; outline: none; }
-        .filter-select { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; font-family: inherit; }
-        .filter-select:focus { border-color: #4a90e2; outline: none; }
-        .filter-checkbox { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-        .filter-checkbox input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
-        .filter-checkbox label { font-size: 13px; color: #333; cursor: pointer; user-select: none; }
+        .filter-options { display: flex; flex-direction: column; gap: 6px; }
+        .filter-option { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .filter-option input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+        .filter-option label { font-size: 13px; color: #333; cursor: pointer; user-select: none; }
 
         /* ═══════════════ COLUMN SETTINGS ═══════════════ */
         .columns-list { display: flex; flex-direction: column; gap: 4px; max-height: 60vh; overflow-y: auto; }
@@ -88,20 +87,33 @@
         th { padding: 10px 12px; text-align: left; font-weight: 500; font-size: 12px; white-space: nowrap; cursor: pointer; user-select: none; position: sticky; top: 0; z-index: 2; background: #4a90e2; min-width: 80px; overflow: hidden; text-overflow: ellipsis; }
         th:hover { background: #357abd; }
         th .sort-arrow { margin-left: 4px; font-size: 10px; opacity: 0.6; }
+        th.sorted { background: #357abd; }
+        th.sorted .sort-arrow { opacity: 1; }
         th .resize-handle { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; cursor: col-resize; background: transparent; z-index: 10; transition: background 0.15s; }
         th .resize-handle:hover, th .resize-handle.active { background: rgba(255,255,255,0.4); }
-        td { padding: 9px 12px; border-bottom: 1px solid #eee; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        tbody tr { cursor: pointer; }
+
+        td { padding: 9px 12px; border-bottom: 1px solid #eee; font-size: 13px; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-height: 38px; }
+        /* ═══ Hover-раскрытие длинного текста ═══ */
+        td.expandable:hover { white-space: normal; word-break: break-word; overflow: visible; max-height: none; position: relative; z-index: 1; background: #fffde7; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+
         tbody tr:hover { background: #f0f7ff; }
-        .row-link { color: #4a90e2; text-decoration: none; font-weight: 500; }
-        .row-link:hover { text-decoration: underline; }
-        .badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; }
-        .badge-overdue { background: #f8d7da; color: #721c24; }
-        .badge-soon { background: #fff3cd; color: #856404; }
-        .badge-ok { background: #d4edda; color: #155724; }
-        .badge-nodate { background: #e2e3e5; color: #383d41; }
+        .link-cell { color: #4a90e2; text-decoration: none; font-weight: 500; }
+        .link-cell:hover { text-decoration: underline; }
         .no-data { padding: 60px 40px; text-align: center; color: #999; }
         .no-data p { font-size: 16px; margin-bottom: 8px; }
+
+        /* ═══════════════ BADGES ═══════════════ */
+        .file-type-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 500; }
+        .ft-VERIFICATION_CERT { background: #e3f2fd; color: #1565c0; }
+        .ft-ATTESTATION_CERT { background: #fff8e1; color: #f57f17; }
+        .ft-REPAIR_ACT { background: #fce4ec; color: #c62828; }
+        .ft-MANUAL { background: #e8f5e9; color: #2e7d32; }
+        .ft-PASSPORT { background: #f3e5f5; color: #6a1b9a; }
+        .ft-CERTIFICATE { background: #e0f2f1; color: #00695c; }
+        .ft-OTHER { background: #e2e3e5; color: #383d41; }
+        .ext-badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; text-transform: uppercase; background: #e8eaf6; color: #283593; margin-right: 6px; }
+        .download-btn { color: #4a90e2; text-decoration: none; font-size: 16px; cursor: pointer; transition: color 0.15s; }
+        .download-btn:hover { color: #357abd; }
 
         /* ═══════════════ PAGINATION ═══════════════ */
         .pagination-bar { background: white; padding: 12px 20px; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
@@ -136,15 +148,18 @@
 
 <!-- ═══════════════ TABS ═══════════════ -->
 <div class="tabs">
-    <a href="{% url 'equipment_list' %}" class="tab">🔬 Реестр оборудования</a>
-    <a href="{% url 'maintenance' %}" class="tab active">📋 Планы ТО</a>
-    <a href="{% url 'equipment_maintenance_log' %}" class="tab">🔰 Поверки и аттестации</a>
+    {% for cat_code, cat_label in available_categories %}
+        <a href="?category={{ cat_code }}" class="tab {% if current_category == cat_code %}active{% endif %}">{{ cat_label }}</a>
+    {% endfor %}
+    <span class="tab disabled">🧪 Образцы</span>
+    <span class="tab disabled">👥 Клиенты</span>
+    <span class="tab disabled">📖 Стандарты</span>
 </div>
 
 <!-- ═══════════════ HEADER ═══════════════ -->
 <div class="header">
     <a href="{% url 'workspace_home' %}" class="back-btn">← К журналам</a>
-    <h1>📋 Планы ТО</h1>
+    <h1>📁 Файловый менеджер</h1>
     <div class="user-info">
         {{ user.full_name }} ({{ user.get_role_display }})
         {% if user.laboratory %} — {{ user.laboratory.name }}{% endif %}
@@ -156,14 +171,18 @@
     <div class="toolbar-left">
         <button class="toolbar-btn btn-blue" onclick="openModal('filter-modal')">
             🔍 Фильтры
-            {% if active_filter_count > 0 %}<span class="filter-badge">{{ active_filter_count }}</span>{% endif %}
+            {% if active_filter_count %}<span class="filter-badge">{{ active_filter_count }}</span>{% endif %}
         </button>
         <button class="toolbar-btn btn-gray" onclick="openModal('columns-modal')">⚙️ Столбцы</button>
         <button class="toolbar-btn btn-gray" onclick="exportXlsx()">📥 Excel</button>
     </div>
     <div class="toolbar-right">
         <div class="stats">
-            {% if overdue_count %}<span>Просроченные: <strong class="stat-overdue">{{ overdue_count }}</strong></span>{% endif %}
+            {% for type_code, info in stats.items %}
+                {% if type_code != '_total' %}
+                <span>{{ info.label }}: <strong>{{ info.count }}</strong></span>
+                {% endif %}
+            {% endfor %}
             <span>Всего: <strong class="stat-total">{{ total_count }}</strong></span>
         </div>
     </div>
@@ -180,22 +199,28 @@
             <div class="filters-grid">
                 <div class="filter-block">
                     <h3>Поиск</h3>
-                    <input type="text" class="filter-input" id="f-search" value="{{ current_search }}" placeholder="Инв. номер, название, тип…">
+                    <input type="text" class="filter-input" id="f-search" value="{{ f_search }}" placeholder="Учётный номер, название, имя файла…">
                 </div>
                 <div class="filter-block">
-                    <h3>Лаборатория</h3>
-                    <select class="filter-select" id="f-lab-id">
-                        <option value="">Все</option>
-                        {% for lab in laboratories %}
-                        <option value="{{ lab.id }}" {% if current_lab_id == lab.id|stringformat:'d' %}selected{% endif %}>{{ lab.name }}</option>
+                    <h3>Тип файла</h3>
+                    <div class="filter-options">
+                        {% for val, display in file_type_choices %}
+                        <div class="filter-option">
+                            <input type="checkbox" id="f-type-{{ val }}" data-filter="file_type" value="{{ val }}" {% if val in f_type %}checked{% endif %}>
+                            <label for="f-type-{{ val }}">{{ display }}</label>
+                        </div>
                         {% endfor %}
-                    </select>
+                    </div>
                 </div>
                 <div class="filter-block">
-                    <h3>Дополнительно</h3>
-                    <div class="filter-checkbox">
-                        <input type="checkbox" id="f-overdue-only" {% if current_overdue_only %}checked{% endif %}>
-                        <label for="f-overdue-only">Только просроченные</label>
+                    <h3>Подразделение</h3>
+                    <div class="filter-options" style="max-height: 200px; overflow-y: auto;">
+                        {% for lab in laboratories %}
+                        <div class="filter-option">
+                            <input type="checkbox" id="f-lab-{{ lab.id }}" data-filter="laboratory" value="{{ lab.id }}" {% if lab.id|stringformat:"d" in f_lab %}checked{% endif %}>
+                            <label for="f-lab-{{ lab.id }}">{{ lab.code_display }} — {{ lab.name }}</label>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
@@ -219,11 +244,13 @@
             <p style="color: #666; font-size: 13px; margin-bottom: 15px;">Выберите столбцы для отображения. Перетаскивайте строки для изменения порядка.</p>
             <div class="columns-list" id="columns-list">
                 {% for col in all_available_columns %}
+                {% if col.code != 'download' %}
                 <div class="column-item" draggable="true" data-code="{{ col.code }}">
                     <span class="drag-handle">☰</span>
                     <input type="checkbox" id="col-{{ col.code }}" value="{{ col.code }}" class="column-checkbox" {% if col.selected %}checked{% endif %}>
                     <label for="col-{{ col.code }}">{{ col.name }}</label>
                 </div>
+                {% endif %}
                 {% endfor %}
             </div>
         </div>
@@ -237,55 +264,51 @@
 
 <!-- ═══════════════ TABLE ═══════════════ -->
 <div class="table-container">
-    {% if plans %}
+    {% if files %}
     <div class="table-scroll">
         <table id="main-tbl">
-            <thead>
-            <tr>
+            <thead><tr>
                 {% for column in visible_columns %}
-                <th data-col="{{ column.code }}" onclick="sortBy('{{ column.code }}')">
+                {% if column.code == 'download' %}
+                <th data-col="download" style="cursor:default;width:50px;">&nbsp;</th>
+                {% else %}
+                <th data-col="{{ column.code }}" onclick="sortBy('{{ column.code }}')"
+                    class="{% if current_sort == column.code %}sorted{% endif %}">
                     <span>{{ column.name }}</span>
-                    <span class="sort-arrow">
-                        {% if current_sort == column.code %}▲{% elif current_sort == '-'|add:column.code %}▼{% else %}⇅{% endif %}
-                    </span>
+                    <span class="sort-arrow">{% if current_sort == column.code %}{% if current_dir == 'asc' %}▲{% else %}▼{% endif %}{% else %}⇅{% endif %}</span>
                     <div class="resize-handle" data-col="{{ column.code }}"></div>
                 </th>
+                {% endif %}
                 {% endfor %}
-            </tr>
-            </thead>
+            </tr></thead>
             <tbody>
-            {% for plan in plans %}
-            <tr onclick="window.location='{% url 'maintenance_detail' plan.id %}'">
-                {% for column in visible_columns %}
-                    {% if column.code == 'accounting_number' %}
-                        <td><a href="{% url 'maintenance_detail' plan.id %}" class="row-link" onclick="event.stopPropagation()">{{ plan.accounting_number|default:"—" }}</a></td>
-                    {% elif column.code == 'equipment_type' %}
-                        <td>{{ plan.equipment_type|default:"—" }}</td>
-                    {% elif column.code == 'laboratory_name' %}
-                        <td>{{ plan.laboratory_name|default:"—" }}</td>
-                    {% elif column.code == 'name' %}
-                        <td>{{ plan.name|default:"—" }}</td>
-                    {% elif column.code == 'frequency_display' %}
-                        <td style="white-space: nowrap;">{{ plan.frequency_display }}</td>
-                    {% elif column.code == 'frequency_condition' %}
-                        <td>{{ plan.frequency_condition|default:"—" }}</td>
-                    {% elif column.code == 'next_due_date' %}
-                        <td style="white-space: nowrap;">
-                            {% if plan.next_due_date %}
-                                {{ plan.next_due_date|date:"d.m.Y" }}&nbsp;
-                                {% if plan.is_overdue %}<span class="badge badge-overdue">Просрочено</span>
-                                {% elif plan.days_left <= 14 %}<span class="badge badge-soon">{{ plan.days_left }} д.</span>
-                                {% else %}<span class="badge badge-ok">{{ plan.days_left }} д.</span>{% endif %}
-                            {% else %}<span class="badge badge-nodate">Не указана</span>{% endif %}
-                        </td>
-                    {% elif column.code == 'notes' %}
-                        <td title="{{ plan.notes|default:'' }}" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666;">{{ plan.notes|default:"—" }}</td>
-                    {% else %}
-                        <td>—</td>
-                    {% endif %}
+                {% for f in files %}
+                <tr>
+                    {% for column in visible_columns %}
+                        {% if column.code == 'accounting_number' %}
+                            <td>{% if f.equipment %}<a href="{% url 'equipment_detail' f.equipment_id %}" class="link-cell">{{ f.equipment.accounting_number }}</a>{% else %}—{% endif %}</td>
+                        {% elif column.code == 'equipment_name' %}
+                            <td class="expandable">{% if f.equipment %}{{ f.equipment.name }}{% else %}—{% endif %}</td>
+                        {% elif column.code == 'laboratory' %}
+                            <td>{% if f.equipment and f.equipment.laboratory %}{{ f.equipment.laboratory.code_display }}{% else %}—{% endif %}</td>
+                        {% elif column.code == 'file_type' %}
+                            <td><span class="file-type-badge ft-{{ f.file_type }}">{{ f.type_label }}</span></td>
+                        {% elif column.code == 'original_name' %}
+                            <td class="expandable"><span class="ext-badge">{{ f.extension|cut:"." }}</span>{{ f.original_name }}{% if f.version > 1 %} <small style="color:#888;">v{{ f.version }}</small>{% endif %}</td>
+                        {% elif column.code == 'file_size' %}
+                            <td style="white-space:nowrap;">{{ f.size_display }}</td>
+                        {% elif column.code == 'uploaded_by' %}
+                            <td class="expandable">{% if f.uploaded_by %}{{ f.uploaded_by.full_name }}{% else %}—{% endif %}</td>
+                        {% elif column.code == 'uploaded_at' %}
+                            <td style="white-space:nowrap;">{{ f.uploaded_at|date:"d.m.Y" }}</td>
+                        {% elif column.code == 'download' %}
+                            <td style="text-align:center;"><a href="{% url 'file_download' f.id %}" class="download-btn" title="Скачать">📥</a></td>
+                        {% else %}
+                            <td>—</td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
                 {% endfor %}
-            </tr>
-            {% endfor %}
             </tbody>
         </table>
     </div>
@@ -302,31 +325,23 @@
         </div>
         {% if page_obj.paginator.num_pages > 1 %}
         <div class="pagination-links">
-            {% if page_obj.has_previous %}
-                <a href="?{{ filter_query }}&page=1" class="page-link">«</a>
-                <a href="?{{ filter_query }}&page={{ page_obj.previous_page_number }}" class="page-link">‹</a>
-            {% else %}
-                <span class="page-link disabled">«</span><span class="page-link disabled">‹</span>
-            {% endif %}
+            {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}{% if query_string %}&{{ query_string }}{% endif %}" class="page-link">‹</a>
+            {% else %}<span class="page-link disabled">‹</span>{% endif %}
             {% for num in page_obj.paginator.page_range %}
-                {% if page_obj.number == num %}<span class="page-link active">{{ num }}</span>
-                {% elif num > page_obj.number|add:"-4" and num < page_obj.number|add:"4" %}<a href="?{{ filter_query }}&page={{ num }}" class="page-link">{{ num }}</a>
-                {% elif num == page_obj.number|add:"-4" or num == page_obj.number|add:"4" %}<span class="page-ellipsis">…</span>{% endif %}
+                {% if num == page_obj.number %}<span class="page-link active">{{ num }}</span>
+                {% elif num == 1 or num == page_obj.paginator.num_pages or num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}<a href="?page={{ num }}{% if query_string %}&{{ query_string }}{% endif %}" class="page-link">{{ num }}</a>
+                {% elif num == page_obj.number|add:"-3" or num == page_obj.number|add:"3" %}<span class="page-ellipsis">…</span>{% endif %}
             {% endfor %}
-            {% if page_obj.has_next %}
-                <a href="?{{ filter_query }}&page={{ page_obj.next_page_number }}" class="page-link">›</a>
-                <a href="?{{ filter_query }}&page={{ page_obj.paginator.num_pages }}" class="page-link">»</a>
-            {% else %}
-                <span class="page-link disabled">›</span><span class="page-link disabled">»</span>
-            {% endif %}
+            {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}{% if query_string %}&{{ query_string }}{% endif %}" class="page-link">›</a>
+            {% else %}<span class="page-link disabled">›</span>{% endif %}
         </div>
         {% endif %}
     </div>
 
     {% else %}
     <div class="no-data">
-        <p>Записей не найдено</p>
-        {% if active_filter_count > 0 %}<small>Попробуйте изменить или сбросить фильтры</small>{% endif %}
+        {% if active_filter_count %}<p>Файлы не найдены</p><small>Попробуйте изменить или сбросить фильтры</small>
+        {% else %}<p>Файлы отсутствуют</p><small>Загрузите файлы через карточку оборудования</small>{% endif %}
     </div>
     {% endif %}
 </div>
@@ -334,6 +349,7 @@
 <div class="resize-tooltip" id="resize-tooltip"></div>
 
 <script>
+    const currentCategory = '{{ current_category }}';
     const csrfToken = '{{ csrf_token }}';
     let savedColumnWidths = {{ column_widths|safe }};
 
@@ -348,34 +364,36 @@
     });
 
     // ─── Сортировка ───
-    function sortBy(field) {
-        const params = new URLSearchParams(window.location.search);
-        const currentSort = params.get('sort') || 'next_due_date';
-        if (currentSort === field) params.set('sort', '-' + field);
-        else if (currentSort === '-' + field) params.set('sort', field);
-        else params.set('sort', field);
-        params.delete('page');
-        window.location.search = params.toString();
+    function sortBy(f) {
+        const p = new URLSearchParams(window.location.search);
+        const cs = p.get('sort') || 'uploaded_at';
+        const cd = p.get('dir') || 'desc';
+        if (cs === f) p.set('dir', cd === 'asc' ? 'desc' : 'asc');
+        else { p.set('sort', f); p.set('dir', 'asc'); }
+        p.delete('page');
+        window.location.search = p.toString();
     }
 
     // ─── Фильтры ───
     function applyFilters() {
         const params = new URLSearchParams();
+        params.set('category', currentCategory);
         const search = document.getElementById('f-search').value.trim();
-        const labId = document.getElementById('f-lab-id').value;
-        const overdueOnly = document.getElementById('f-overdue-only').checked;
         if (search) params.set('search', search);
-        if (labId) params.set('lab_id', labId);
-        if (overdueOnly) params.set('overdue_only', '1');
+        document.querySelectorAll('input[data-filter="file_type"]:checked').forEach(cb => params.append('file_type', cb.value));
+        document.querySelectorAll('input[data-filter="laboratory"]:checked').forEach(cb => params.append('laboratory', cb.value));
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('sort')) params.set('sort', urlParams.get('sort'));
+        if (urlParams.has('dir')) params.set('dir', urlParams.get('dir'));
         if (urlParams.has('per_page')) params.set('per_page', urlParams.get('per_page'));
         window.location.search = params.toString();
     }
     function resetFilters() {
         const params = new URLSearchParams();
+        params.set('category', currentCategory);
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('sort')) params.set('sort', urlParams.get('sort'));
+        if (urlParams.has('dir')) params.set('dir', urlParams.get('dir'));
         if (urlParams.has('per_page')) params.set('per_page', urlParams.get('per_page'));
         window.location.search = params.toString();
     }
@@ -398,43 +416,119 @@
         const selected = [];
         items.forEach(item => { const cb = item.querySelector('.column-checkbox'); if (cb && cb.checked) selected.push(cb.value); });
         if (selected.length === 0) { alert('Выберите хотя бы один столбец'); return; }
+        // Всегда добавляем download в конец
+        selected.push('download');
         try {
-            const resp = await fetch('{% url "save_maintenance_columns" %}', { method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken}, body: JSON.stringify({columns: selected}) });
+            const resp = await fetch('{% url "save_fm_columns" %}', { method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken}, body: JSON.stringify({columns: selected, category: currentCategory}) });
             if (resp.ok) window.location.reload();
             else { const data = await resp.json(); alert('Ошибка: ' + (data.error || 'Неизвестная ошибка')); }
         } catch (e) { alert('Ошибка сохранения: ' + e.message); }
     }
     function resetColumns() {
-        fetch('{% url "save_maintenance_columns" %}', { method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken}, body: JSON.stringify({columns: ['__reset__']}) }).then(() => window.location.reload());
+        fetch('{% url "save_fm_columns" %}', { method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken}, body: JSON.stringify({columns: ['__reset__'], category: currentCategory}) }).then(() => window.location.reload());
     }
 
     // ─── Excel ───
     function exportXlsx() {
         const params = new URLSearchParams(window.location.search);
         params.delete('page');
-        window.location.href = '{% url "export_maintenance_xlsx" %}?' + params.toString();
+        window.location.href = '{% url "export_files_xlsx" %}?' + params.toString();
     }
 
     // ─── Resize столбцов ───
     (function initColumnResize() {
         const table = document.getElementById('main-tbl');
         if (!table) return;
-        const headers = table.querySelectorAll('th');
         const tooltip = document.getElementById('resize-tooltip');
         let resizing = null, startX = 0, startWidth = 0, saveTimeout = null;
-        headers.forEach(th => { const col = th.dataset.col; if (col && savedColumnWidths[col]) th.style.width = savedColumnWidths[col] + 'px'; });
+        let frozen = false;
+
+        // Зафиксировать ширины ВСЕХ столбцов в пикселях
+        // (без этого table-layout:fixed перераспределяет пространство)
+        function freezeAll() {
+            if (frozen) return;
+            const ths = table.querySelectorAll('th');
+            let total = 0;
+            ths.forEach(th => {
+                const w = th.offsetWidth;
+                th.style.width = w + 'px';
+                total += w;
+            });
+            table.style.width = total + 'px';
+            table.style.minWidth = '0';
+            frozen = true;
+        }
+
+        // Применить сохранённые ширины
+        const ths = table.querySelectorAll('th');
+        if (Object.keys(savedColumnWidths).length > 0) {
+            ths.forEach(th => {
+                const col = th.dataset.col;
+                if (col && savedColumnWidths[col]) {
+                    th.style.width = savedColumnWidths[col] + 'px';
+                }
+            });
+            // Нужен setTimeout чтобы браузер сначала отрисовал ширины
+            setTimeout(freezeAll, 0);
+        }
+
         document.querySelectorAll('.resize-handle').forEach(handle => {
-            handle.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); const th = handle.closest('th'); resizing = th; startX = e.pageX; startWidth = th.offsetWidth; handle.classList.add('active'); document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; });
+            handle.addEventListener('mousedown', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                freezeAll();
+                const th = handle.closest('th');
+                resizing = th;
+                startX = e.pageX;
+                startWidth = th.offsetWidth;
+                handle.classList.add('active');
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+            });
         });
-        document.addEventListener('mousemove', e => { if (!resizing) return; const newWidth = Math.max(60, startWidth + (e.pageX - startX)); resizing.style.width = newWidth + 'px'; tooltip.style.display = 'block'; tooltip.style.left = e.pageX + 10 + 'px'; tooltip.style.top = e.pageY - 20 + 'px'; tooltip.textContent = newWidth + 'px'; });
-        document.addEventListener('mouseup', () => { if (!resizing) return; const col = resizing.dataset.col; const width = resizing.offsetWidth; resizing.querySelector('.resize-handle')?.classList.remove('active'); resizing = null; document.body.style.cursor = ''; document.body.style.userSelect = ''; tooltip.style.display = 'none'; if (col) { savedColumnWidths[col] = width; clearTimeout(saveTimeout); saveTimeout = setTimeout(() => { fetch('{% url "save_maintenance_column_widths" %}', { method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken}, body: JSON.stringify({widths: savedColumnWidths}) }).catch(err => console.error('Ошибка сохранения ширин:', err)); }, 500); } });
+
+        document.addEventListener('mousemove', e => {
+            if (!resizing) return;
+            const diff = e.pageX - startX;
+            const newWidth = Math.max(40, startWidth + diff);
+            // Пересчитываем ширину таблицы: убираем старую, добавляем новую
+            const currentTableWidth = parseInt(table.style.width) || table.offsetWidth;
+            table.style.width = (currentTableWidth - resizing.offsetWidth + newWidth) + 'px';
+            resizing.style.width = newWidth + 'px';
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.pageX + 10) + 'px';
+            tooltip.style.top = (e.pageY - 20) + 'px';
+            tooltip.textContent = newWidth + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!resizing) return;
+            const col = resizing.dataset.col;
+            const width = resizing.offsetWidth;
+            resizing.querySelector('.resize-handle')?.classList.remove('active');
+            resizing = null;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            tooltip.style.display = 'none';
+            if (col) {
+                savedColumnWidths[col] = width;
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    fetch('{% url "save_fm_column_widths" %}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                        body: JSON.stringify({ widths: savedColumnWidths, category: currentCategory })
+                    }).catch(err => console.error('Ошибка сохранения ширин:', err));
+                }, 500);
+            }
+        });
     })();
 
-    function changePerPage(value) {
-        const params = new URLSearchParams(window.location.search);
-        params.set('per_page', value);
-        params.delete('page');
-        window.location.search = params.toString();
+    function changePerPage(v) {
+        const p = new URLSearchParams(window.location.search);
+        p.set('per_page', v);
+        p.delete('page');
+        window.location.search = p.toString();
     }
 </script>
 </body>

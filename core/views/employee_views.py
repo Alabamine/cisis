@@ -1,24 +1,16 @@
 """
-employee_views.py — Справочник сотрудников
-v3.27.0
+employee_views.py — Справочник сотрудников + Матрица ответственности
+v3.28.0
 
 Расположение: core/views/employee_views.py
 
-Подключить в core/views/__init__.py:
-    from . import employee_views
-
-Маршруты в core/urls.py:
-    path('workspace/employees/', employee_views.employees_list, name='employees'),
-    path('workspace/employees/add/', employee_views.employee_add, name='employee_add'),
-    path('workspace/employees/<int:user_id>/', employee_views.employee_detail, name='employee_detail'),
-    path('workspace/employees/<int:user_id>/edit/', employee_views.employee_edit, name='employee_edit'),
-    path('workspace/employees/<int:user_id>/deactivate/', employee_views.employee_deactivate, name='employee_deactivate'),
-    path('workspace/employees/<int:user_id>/activate/', employee_views.employee_activate, name='employee_activate'),
-    path('workspace/employees/<int:user_id>/reset-password/', employee_views.employee_reset_password, name='employee_reset_password'),
-    path('workspace/change-password/', employee_views.change_password, name='change_password'),
-    path('api/check-username/', employee_views.api_check_username, name='api_check_username'),
+Новые маршруты в core/urls.py:
+    path('workspace/employees/<int:user_id>/save-areas/', employee_views.employee_save_areas, name='employee_save_areas'),
+    path('workspace/responsibility-matrix/', employee_views.responsibility_matrix, name='responsibility_matrix'),
+    path('api/responsibility-matrix/save/', employee_views.api_save_matrix, name='api_save_matrix'),
 """
 
+import json
 import re
 import secrets
 import string
@@ -28,11 +20,14 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.db import connection
 from django.http import JsonResponse, HttpResponseForbidden
 from django.db.models import Q
+from django.views.decorators.http import require_POST
 
 from core.permissions import PermissionChecker
 from core.models import User, Laboratory, UserRole
+from core.models.base import AccreditationArea
 
 EMPLOYEES_PER_PAGE = 50
 
@@ -71,6 +66,11 @@ def _can_manage_employee(editor, target):
     return False
 
 
+def _can_manage_matrix(user):
+    """Может ли пользователь редактировать матрицу ответственности."""
+    return PermissionChecker.can_edit(user, 'RESPONSIBILITY_MATRIX', 'access')
+
+
 def _validate_phone(phone):
     """Валидация телефона. Возвращает (cleaned, error)."""
     if not phone:
@@ -85,6 +85,39 @@ def _generate_password(length=10):
     """Генерирует случайный пароль."""
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+def _get_user_area_ids(user_id):
+    """Получить ID областей аккредитации, к которым допущен сотрудник."""
+    with connection.cursor() as cur:
+        cur.execute(
+            "SELECT accreditation_area_id FROM user_accreditation_areas WHERE user_id = %s",
+            [user_id]
+        )
+        return [row[0] for row in cur.fetchall()]
+
+
+def _get_equipment_for_user(user_id):
+    """Получить оборудование, где сотрудник ответственный или замещающий."""
+    with connection.cursor() as cur:
+        cur.execute("""
+            SELECT
+                e.id, e.name, e.inventory_number, e.equipment_type,
+                e.status, l.code_display AS lab_display,
+                CASE
+                    WHEN e.responsible_person_id = %s THEN 'responsible'
+                    WHEN e.substitute_person_id = %s THEN 'substitute'
+                END AS person_role
+            FROM equipment e
+            LEFT JOIN laboratories l ON l.id = e.laboratory_id
+            WHERE e.responsible_person_id = %s OR e.substitute_person_id = %s
+            ORDER BY
+                CASE WHEN e.responsible_person_id = %s THEN 0 ELSE 1 END,
+                e.equipment_type, e.name
+        """, [user_id, user_id, user_id, user_id, user_id])
+
+        columns = [col[0] for col in cur.description]
+        return [dict(zip(columns, row)) for row in cur.fetchall()]
 
 
 # ─────────────────────────────────────────────────────────────
@@ -210,15 +243,120 @@ def employee_detail(request, user_id):
         mentor=employee, is_active=True
     ).order_by('last_name', 'first_name')
 
+    # ── Оборудование ⭐ v3.28.0 ──────────────────────────────
+    equipment_list = _get_equipment_for_user(employee.pk)
+    equipment_responsible = [e for e in equipment_list if e['person_role'] == 'responsible']
+    equipment_substitute  = [e for e in equipment_list if e['person_role'] == 'substitute']
+
+    # ── Области аккредитации ⭐ v3.28.0 ───────────────────────
+    user_area_ids = _get_user_area_ids(employee.pk)
+    all_areas = AccreditationArea.objects.filter(is_active=True).order_by('name')
+
+    # Исключения по стандартам
+    standard_exclusions = []
+    with connection.cursor() as cur:
+        cur.execute("""
+            SELECT use.standard_id, s.code, s.name, use.reason
+            FROM user_standard_exclusions use
+            JOIN standards s ON s.id = use.standard_id
+            WHERE use.user_id = %s
+            ORDER BY s.code
+        """, [employee.pk])
+        for row in cur.fetchall():
+            standard_exclusions.append({
+                'standard_id': row[0],
+                'code': row[1],
+                'name': row[2],
+                'reason': row[3],
+            })
+
+    # Можно ли редактировать допуски (матрицу ответственности)
+    can_manage_areas = _can_manage_matrix(request.user)
+    # LAB_HEAD может редактировать допуски только для своих сотрудников
+    if not can_manage_areas and request.user.role == 'LAB_HEAD':
+        can_manage_areas = _can_manage_employee(request.user, employee)
+
     context = {
-        'employee':     employee,
-        'role_display': role_display,
-        'mentor_name':  mentor_name,
-        'trainees':     trainees,
-        'can_manage':   can_manage,
-        'is_self':      is_self,
+        'employee':              employee,
+        'role_display':          role_display,
+        'mentor_name':           mentor_name,
+        'trainees':              trainees,
+        'can_manage':            can_manage,
+        'is_self':               is_self,
+        'equipment_responsible': equipment_responsible,
+        'equipment_substitute':  equipment_substitute,
+        'user_area_ids':         user_area_ids,
+        'all_areas':             all_areas,
+        'can_manage_areas':      can_manage_areas,
+        'standard_exclusions':   standard_exclusions,
     }
     return render(request, 'core/employee_detail.html', context)
+
+
+# ─────────────────────────────────────────────────────────────
+# Сохранение областей аккредитации сотрудника ⭐ v3.28.0
+# ─────────────────────────────────────────────────────────────
+
+@login_required
+@require_POST
+def employee_save_areas(request, user_id):
+    """Сохранить области аккредитации для сотрудника."""
+    employee = get_object_or_404(User, pk=user_id)
+
+    # Проверка прав
+    can_edit_areas = _can_manage_matrix(request.user)
+    if not can_edit_areas and request.user.role == 'LAB_HEAD':
+        can_edit_areas = _can_manage_employee(request.user, employee)
+    if not can_edit_areas:
+        return HttpResponseForbidden()
+
+    area_ids = request.POST.getlist('area_ids')  # список строк
+    area_ids_int = [int(a) for a in area_ids if a.isdigit()]
+
+    old_area_ids = set(_get_user_area_ids(employee.pk))
+    new_area_ids = set(area_ids_int)
+
+    with connection.cursor() as cur:
+        # Удалить снятые
+        to_remove = old_area_ids - new_area_ids
+        if to_remove:
+            cur.execute(
+                "DELETE FROM user_accreditation_areas WHERE user_id = %s AND accreditation_area_id = ANY(%s)",
+                [employee.pk, list(to_remove)]
+            )
+
+        # Добавить новые
+        to_add = new_area_ids - old_area_ids
+        for area_id in to_add:
+            cur.execute(
+                "INSERT INTO user_accreditation_areas (user_id, accreditation_area_id, assigned_by_id) "
+                "VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+                [employee.pk, area_id, request.user.pk]
+            )
+
+    # Аудит
+    if to_remove or to_add:
+        try:
+            from core.views.audit import log_action
+
+            # Получаем названия областей для лога
+            areas_map = dict(AccreditationArea.objects.values_list('id', 'name'))
+            added_names = [areas_map.get(a, str(a)) for a in to_add]
+            removed_names = [areas_map.get(a, str(a)) for a in to_remove]
+
+            log_action(
+                    request, 'USER', employee.pk, 'EMPLOYEE_AREAS_CHANGED',
+                    extra_data={
+                    'employee': employee.full_name,
+                    'added': added_names,
+                    'removed': removed_names,
+                }
+            )
+        except Exception:
+            pass
+
+    messages.success(request, f'Области аккредитации для {employee.full_name} обновлены')
+    return redirect('employee_detail', user_id=employee.pk)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -289,11 +427,8 @@ def employee_edit(request, user_id):
                 try:
                     from core.views.audit import log_action
                     log_action(
-                        user=request.user,
-                        action='EMPLOYEE_EDIT',
-                        target_type='USER',
-                        target_id=employee.pk,
-                        extra_data={'employee': employee.full_name}
+                            request, 'USER', employee.pk, 'EMPLOYEE_EDIT',
+                            extra_data={'employee': employee.full_name}
                     )
                 except Exception:
                     pass
@@ -405,11 +540,8 @@ def employee_add(request):
                 try:
                     from core.views.audit import log_action
                     log_action(
-                        user=request.user,
-                        action='EMPLOYEE_ADD',
-                        target_type='USER',
-                        target_id=new_user.pk,
-                        extra_data={'employee': new_user.full_name}
+                            request, 'USER', new_user.pk, 'EMPLOYEE_ADD',
+                            extra_data={'employee': new_user.full_name}
                     )
                 except Exception:
                     pass
@@ -453,11 +585,8 @@ def employee_deactivate(request, user_id):
     try:
         from core.views.audit import log_action
         log_action(
-            user=request.user,
-            action='EMPLOYEE_DEACTIVATE',
-            target_type='USER',
-            target_id=employee.pk,
-            extra_data={'employee': employee.full_name}
+                request, 'USER', employee.pk, 'EMPLOYEE_DEACTIVATE',
+                extra_data={'employee': employee.full_name}
         )
     except Exception:
         pass
@@ -482,11 +611,8 @@ def employee_activate(request, user_id):
     try:
         from core.views.audit import log_action
         log_action(
-            user=request.user,
-            action='EMPLOYEE_ACTIVATE',
-            target_type='USER',
-            target_id=employee.pk,
-            extra_data={'employee': employee.full_name}
+                request, 'USER', employee.pk, 'EMPLOYEE_ACTIVATE',
+                extra_data={'employee': employee.full_name}
         )
     except Exception:
         pass
@@ -516,11 +642,8 @@ def employee_reset_password(request, user_id):
     try:
         from core.views.audit import log_action
         log_action(
-            user=request.user,
-            action='EMPLOYEE_RESET_PASSWORD',
-            target_type='USER',
-            target_id=employee.pk,
-            extra_data={'employee': employee.full_name}
+                request, 'USER', employee.pk, 'EMPLOYEE_RESET_PASSWORD',
+                extra_data={'employee': employee.full_name}
         )
     except Exception:
         pass
@@ -579,3 +702,145 @@ def api_check_username(request):
 
     exists = User.objects.filter(username=username).exists()
     return JsonResponse({'available': not exists})
+
+
+# ─────────────────────────────────────────────────────────────
+# Матрица ответственности ⭐ v3.28.0
+# ─────────────────────────────────────────────────────────────
+
+@login_required
+def responsibility_matrix(request):
+    """Страница «Матрица ответственности» — сотрудники × области аккредитации."""
+    if not PermissionChecker.can_view(request.user, 'RESPONSIBILITY_MATRIX', 'access'):
+        messages.error(request, 'У вас нет доступа к матрице ответственности')
+        return redirect('workspace_home')
+
+    can_edit = _can_manage_matrix(request.user)
+
+    # ── Фильтры ───────────────────────────────────────────────
+    lab_filter = request.GET.get('lab_id', '')
+    search = request.GET.get('search', '').strip()
+
+    # Области аккредитации (без «Вне области»)
+    areas = AccreditationArea.objects.filter(
+        is_active=True, is_default=False
+    ).order_by('name')
+
+    # Сотрудники
+    users_qs = User.objects.filter(is_active=True).select_related('laboratory')
+
+    if lab_filter:
+        users_qs = users_qs.filter(laboratory_id=int(lab_filter))
+
+    if search:
+        users_qs = users_qs.filter(
+            Q(last_name__icontains=search) |
+            Q(first_name__icontains=search) |
+            Q(sur_name__icontains=search)
+        )
+
+    users_qs = users_qs.order_by('laboratory__code_display', 'last_name', 'first_name')
+
+    # Загружаем все допуски одним запросом
+    with connection.cursor() as cur:
+        cur.execute("SELECT user_id, accreditation_area_id FROM user_accreditation_areas")
+        all_assignments = cur.fetchall()
+
+    # Множество (user_id, area_id)
+    assignment_set = {(row[0], row[1]) for row in all_assignments}
+
+    # Собираем данные для шаблона
+    matrix_rows = []
+    for user in users_qs:
+        row = {
+            'user': user,
+            'areas': []
+        }
+        for area in areas:
+            row['areas'].append({
+                'area_id': area.id,
+                'checked': (user.pk, area.id) in assignment_set,
+            })
+        matrix_rows.append(row)
+
+    # Лаборатории для фильтра
+    laboratories = Laboratory.objects.filter(
+        is_active=True, department_type='LAB'
+    ).order_by('code_display')
+
+    context = {
+        'areas':          areas,
+        'matrix_rows':    matrix_rows,
+        'can_edit':       can_edit,
+        'laboratories':   laboratories,
+        'current_lab_id': lab_filter,
+        'current_search': search,
+        'total_users':    len(matrix_rows),
+    }
+    return render(request, 'core/responsibility_matrix.html', context)
+
+
+@login_required
+@require_POST
+def api_save_matrix(request):
+    """AJAX: сохранить изменения матрицы ответственности."""
+    if not _can_manage_matrix(request.user):
+        return JsonResponse({'error': 'Нет прав на редактирование'}, status=403)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Некорректный JSON'}, status=400)
+
+    changes = data.get('changes', [])
+    # changes = [{'user_id': 5, 'area_id': 2, 'checked': True}, ...]
+
+    if not changes:
+        return JsonResponse({'success': True, 'count': 0})
+
+    added = 0
+    removed = 0
+
+    with connection.cursor() as cur:
+        for ch in changes:
+            user_id = int(ch['user_id'])
+            area_id = int(ch['area_id'])
+            checked = ch['checked']
+
+            if checked:
+                cur.execute(
+                    "INSERT INTO user_accreditation_areas (user_id, accreditation_area_id, assigned_by_id) "
+                    "VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
+                    [user_id, area_id, request.user.pk]
+                )
+                if cur.rowcount > 0:
+                    added += 1
+            else:
+                cur.execute(
+                    "DELETE FROM user_accreditation_areas "
+                    "WHERE user_id = %s AND accreditation_area_id = %s",
+                    [user_id, area_id]
+                )
+                if cur.rowcount > 0:
+                    removed += 1
+
+    # Аудит
+    if added or removed:
+        try:
+            from core.views.audit import log_action
+            log_action(
+                    request, 'RESPONSIBILITY_MATRIX', 0, 'MATRIX_BULK_UPDATE',
+                    extra_data={
+                    'added': added,
+                    'removed': removed,
+                    'total_changes': len(changes),
+                }
+            )
+        except Exception:
+            pass
+
+    return JsonResponse({
+        'success': True,
+        'added': added,
+        'removed': removed,
+    })

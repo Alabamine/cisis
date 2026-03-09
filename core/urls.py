@@ -20,6 +20,8 @@ from .views.sample_views import (
         unfreeze_registration_block,
         search_protocols, search_standards,
         search_moisture_samples,  # ⭐ v3.15.0
+        api_check_operator_accreditation,  # ⭐ v3.28.0
+        api_check_operator_accreditation,  # ⭐ v3.28.0
     )
 from .views.journal_views import (
     journal_samples, export_journal_xlsx,
@@ -45,8 +47,10 @@ from .views.analytics_views import (
     api_status_distribution, api_daily_registrations,
     api_employee_stats,
 )
-from .views.maintenance_views import (maintenance_view, maintenance_detail_view)
+from core.views import maintenance_views
 from core.views import employee_views
+from core.views import equipment_views
+from core.views import file_manager_views
 
 urlpatterns = [
     path('permissions/', permissions_views.manage_permissions, name='manage_permissions'),
@@ -115,6 +119,14 @@ urlpatterns = [
     path('api/parameters/create/', parameter_views.api_parameter_create, name='api_parameter_create'),
     path('api/parameters/reorder/', parameter_views.api_parameter_reorder, name='api_parameter_reorder'),
 
+    path('workspace/files/', file_manager_views.file_manager, name='file_manager'),
+    path('workspace/files/export/', file_manager_views.export_files_xlsx, name='export_files_xlsx'),
+    path('workspace/files/save-columns/', file_manager_views.save_fm_columns, name='save_fm_columns'),
+    path('workspace/files/save-column-widths/', file_manager_views.save_fm_column_widths, name='save_fm_column_widths'),
+
+    # ─── equipment_views (Поверки и аттестации) — 2 новых маршрута ───
+    path('workspace/equipment/maintenance-log/save-columns/', equipment_views.save_maintenance_log_columns, name='save_maintenance_log_columns'),
+    path('workspace/equipment/maintenance-log/save-column-widths/', equipment_views.save_maintenance_log_column_widths, name='save_maintenance_log_column_widths'),
     # Аналитика 
     path('workspace/analytics/',  analytics_view, name='analytics'),
     # API-эндпоинты аналитики
@@ -126,8 +138,13 @@ urlpatterns = [
     path('workspace/analytics/api/daily-registrations',api_daily_registrations, name='analytics_api_daily_registrations'),
     path('workspace/analytics/api/employee-stats', api_employee_stats, name='analytics_api_employee_stats'),
     # Техническое обслуживание
-    path('workspace/maintenance/', maintenance_view, name='maintenance'),
-    path('workspace/maintenance/<int:plan_id>/', maintenance_detail_view, name='maintenance_detail'),
+    path('workspace/maintenance/save-columns/', maintenance_views.save_maintenance_columns,
+         name='save_maintenance_columns'),
+    path('workspace/maintenance/save-column-widths/', maintenance_views.save_maintenance_column_widths,
+         name='save_maintenance_column_widths'),
+    path('workspace/maintenance/export/', maintenance_views.export_maintenance_xlsx, name='export_maintenance_xlsx'),
+    path('workspace/maintenance/', maintenance_views.maintenance_view, name='maintenance'),
+    path('workspace/maintenance/<int:plan_id>/', maintenance_views.maintenance_detail_view, name='maintenance_detail'),
 
     # Справочник сотрудников
     path('workspace/employees/', employee_views.employees_list, name='employees'),
@@ -139,4 +156,31 @@ urlpatterns = [
     path('workspace/employees/<int:user_id>/reset-password/', employee_views.employee_reset_password, name='employee_reset_password'),
     path('workspace/change-password/', employee_views.change_password, name='change_password'),
     path('api/check-username/', employee_views.api_check_username, name='api_check_username'),
+
+    # ⭐ v3.28.0: Матрица ответственности
+    path('workspace/employees/<int:user_id>/save-areas/', employee_views.employee_save_areas,
+         name='employee_save_areas'),
+    path('workspace/responsibility-matrix/', employee_views.responsibility_matrix, name='responsibility_matrix'),
+    path('api/responsibility-matrix/save/', employee_views.api_save_matrix, name='api_save_matrix'),
+
+    # ⭐ v3.28.0: Проверка допуска + исключения
+    path('api/check-operator-accreditation/', api_check_operator_accreditation,
+         name='api_check_operator_accreditation'),
+    path('api/standards/toggle-exclusion/', parameter_views.api_standard_toggle_exclusion,
+         name='api_standard_toggle_exclusion'),
+
+    # Реестр оборудования ⭐ v3.29.0
+    path('workspace/equipment/', equipment_views.equipment_list, name='equipment_list'),
+    path('workspace/equipment/save-columns/', equipment_views.save_equipment_columns, name='save_equipment_columns'),
+    path('workspace/equipment/save-column-widths/', equipment_views.save_equipment_column_widths, name='save_equipment_column_widths'),
+    path('workspace/equipment/filter-options/', equipment_views.equipment_filter_options, name='equipment_filter_options'),
+    path('workspace/equipment/export/', equipment_views.export_equipment_xlsx, name='export_equipment_xlsx'),
+    path('workspace/equipment/<int:equipment_id>/add-maintenance/', equipment_views.equipment_add_maintenance, name='equipment_add_maintenance'),
+    path('workspace/equipment/<int:equipment_id>/edit/', equipment_views.equipment_edit, name='equipment_edit'),
+    path('workspace/equipment/maintenance-log/', equipment_views.equipment_maintenance_log, name='equipment_maintenance_log'),
+    path('workspace/equipment/maintenance-log/export/', equipment_views.export_maintenance_log_xlsx, name='export_maintenance_log_xlsx'),
+    path('workspace/equipment/<int:equipment_id>/', equipment_views.equipment_detail, name='equipment_detail'),
+    path('workspace/equipment/<int:equipment_id>/add-plan/', equipment_views.equipment_add_plan, name='equipment_add_plan'),
+    path('workspace/equipment/<int:equipment_id>/edit-plan/<int:plan_id>/', equipment_views.equipment_edit_plan, name='equipment_edit_plan'),
+    path('workspace/equipment/<int:equipment_id>/delete-plan/<int:plan_id>/', equipment_views.equipment_delete_plan, name='equipment_delete_plan'),
 ]

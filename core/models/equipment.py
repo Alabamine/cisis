@@ -15,9 +15,9 @@ from django.db import models
 # =============================================================================
 
 class EquipmentType(models.TextChoices):
-    MEASURING  = 'СИ',  'Средство измерения (СИ)'
-    TESTING    = 'ИО',  'Испытательное оборудование (ИО)'
-    AUXILIARY  = 'ВО',  'Вспомогательное оборудование (ВО)'
+    MEASURING  = 'СИ',  'СИ'
+    TESTING    = 'ИО',  'ИО'
+    AUXILIARY  = 'ВО',  'ВО'
 
 
 class EquipmentStatus(models.TextChoices):
@@ -45,6 +45,10 @@ class MaintenanceLogStatus(models.TextChoices):
     SKIPPED   = 'SKIPPED',   'Пропущено'
     PARTIAL   = 'PARTIAL',   'Частично'
     OVERDUE   = 'OVERDUE',   'Просрочено'
+
+class VerificationResult(models.TextChoices):
+    SUITABLE   = 'SUITABLE',   'Пригоден'
+    UNSUITABLE = 'UNSUITABLE', 'Непригоден'
 
 
 # =============================================================================
@@ -127,6 +131,7 @@ class Equipment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+
     class Meta:
         db_table = 'equipment'
         managed  = False
@@ -172,7 +177,17 @@ class EquipmentMaintenance(models.Model):
         db_column='performed_by_id',
     )
     created_at = models.DateTimeField(auto_now_add=True)
-
+    certificate_number = models.CharField(max_length=200, default='', blank=True,
+                                          verbose_name='Номер свидетельства')
+    valid_until = models.DateField(null=True, blank=True,
+                                   verbose_name='Действительно до')
+    verification_organization = models.CharField(max_length=300, default='', blank=True,
+                                                 verbose_name='Организация-поверитель')
+    verification_result = models.CharField(max_length=20, default='', blank=True,
+                                           choices=VerificationResult.choices,
+                                           verbose_name='Результат')
+    fgis_arshin_number = models.CharField(max_length=100, default='', blank=True,
+                                          verbose_name='Номер в ФГИС Аршин')
     class Meta:
         db_table = 'equipment_maintenance'
         managed  = False
@@ -224,12 +239,45 @@ class EquipmentMaintenancePlan(models.Model):
             return self.frequency_condition or 'По условию'
         parts = []
         if self.frequency_count and self.frequency_unit and self.frequency_period_value:
-            unit_map = {'DAY': 'день', 'WEEK': 'неделю', 'MONTH': 'месяц', 'YEAR': 'год'}
-            unit = unit_map.get(self.frequency_unit, self.frequency_unit)
-            if self.frequency_period_value == 1:
-                parts.append(f'{self.frequency_count} раз в {unit}')
+            count = self.frequency_count
+            period = self.frequency_period_value
+
+            # Склонение единиц измерения: (1, 2-4, 5+)
+            unit_forms = {
+                'DAY':   ('день', 'дня', 'дней'),
+                'WEEK':  ('неделю', 'недели', 'недель'),
+                'MONTH': ('месяц', 'месяца', 'месяцев'),
+                'YEAR':  ('год', 'года', 'лет'),
+            }
+            forms = unit_forms.get(self.frequency_unit, (self.frequency_unit,) * 3)
+
+            def _pluralize(n, form1, form2, form5):
+                """Склонение: 1 день, 2 дня, 5 дней"""
+                n_abs = abs(n) % 100
+                if 11 <= n_abs <= 19:
+                    return form5
+                last = n_abs % 10
+                if last == 1:
+                    return form1
+                if 2 <= last <= 4:
+                    return form2
+                return form5
+
+            unit_word = _pluralize(period, *forms)
+
+            raz_word = _pluralize(count, 'раз', 'раза', 'раз')
+
+            if period == 1:
+                if count == 1:
+                    parts.append(f'раз в {unit_word}')
+                else:
+                    parts.append(f'{count} {raz_word} в {unit_word}')
             else:
-                parts.append(f'{self.frequency_count} раз в {self.frequency_period_value} {unit}(ев)')
+                if count == 1:
+                    parts.append(f'раз в {period} {unit_word}')
+                else:
+                    parts.append(f'{count} {raz_word} в {period} {unit_word}')
+
         if self.is_condition_based and self.frequency_condition:
             parts.append(f'({self.frequency_condition})')
         return ', '.join(parts) if parts else '—'

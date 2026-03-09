@@ -52,6 +52,9 @@ class FileType:
     MANUAL = 'MANUAL'
     CERTIFICATE = 'CERTIFICATE'
     PASSPORT = 'PASSPORT'
+    VERIFICATION_CERT = 'VERIFICATION_CERT'
+    ATTESTATION_CERT = 'ATTESTATION_CERT'
+    REPAIR_ACT = 'REPAIR_ACT'
     # STANDARD
     PDF = 'PDF'
     LINK = 'LINK'
@@ -81,9 +84,12 @@ class FileType:
             (ACT_OTHER, 'Прочее по акту'),
         ],
         FileCategory.EQUIPMENT: [
+            (VERIFICATION_CERT, 'Свидетельство о поверке'),
+            (ATTESTATION_CERT, 'Акт аттестации'),
+            (REPAIR_ACT, 'Акт ремонта'),
             (MANUAL, 'Инструкция'),
-            (CERTIFICATE, 'Свидетельство о поверке'),
             (PASSPORT, 'Паспорт'),
+            (OTHER, 'Прочее'),
         ],
         FileCategory.STANDARD: [
             (PDF, 'PDF стандарта'),

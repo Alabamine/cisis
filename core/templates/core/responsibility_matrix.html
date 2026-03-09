@@ -1,0 +1,372 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Матрица ответственности — CISIS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; padding: 20px;
+        }
+        .page { max-width: 1200px; margin: 0 auto; }
+
+        .header {
+            background: white; padding: 20px; border-radius: 12px;
+            margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header-top {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .header h1 { font-size: 24px; color: #333; }
+        .header-actions { display: flex; gap: 10px; }
+        .back-link {
+            color: #666; text-decoration: none; font-size: 14px;
+            padding: 8px 16px; background: #f5f5f5; border-radius: 6px;
+        }
+        .back-link:hover { background: #e8e8e8; }
+        .user-info { color: #666; font-size: 14px; }
+
+        .filters-bar {
+            background: white; padding: 14px 20px; border-radius: 12px;
+            margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+        }
+        .filters-bar input, .filters-bar select {
+            padding: 8px 12px; border: 1px solid #ddd;
+            border-radius: 6px; font-size: 14px;
+        }
+        .filters-bar input { flex: 1; min-width: 200px; max-width: 350px; }
+        .filters-bar select { min-width: 160px; }
+        .btn-search {
+            padding: 8px 18px; background: #667eea; color: #fff;
+            border: none; border-radius: 6px; cursor: pointer; font-size: 14px;
+        }
+        .btn-search:hover { background: #5a6fd6; }
+        .btn-reset { color: #999; font-size: 13px; text-decoration: none; }
+
+        .matrix-card {
+            background: white; border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .matrix-toolbar {
+            padding: 14px 20px; border-bottom: 1px solid #eee;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .matrix-toolbar-info { font-size: 13px; color: #666; }
+        .btn-save-matrix {
+            padding: 8px 20px; background: #28a745; color: white;
+            border: none; border-radius: 6px; cursor: pointer;
+            font-size: 14px; font-weight: 500;
+            display: none; /* показывается когда есть изменения */
+        }
+        .btn-save-matrix:hover { background: #218838; }
+        .btn-save-matrix:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-save-matrix.has-changes { display: inline-block; }
+        .changes-counter {
+            font-size: 12px; color: #667eea; font-weight: 600;
+            display: none;
+        }
+        .changes-counter.has-changes { display: inline; }
+
+        .matrix-table {
+            width: 100%; border-collapse: collapse;
+        }
+        .matrix-table thead th {
+            background: #f8f9fa; padding: 12px 14px;
+            text-align: center; font-size: 12px;
+            color: #6c757d; font-weight: 600;
+            text-transform: uppercase;
+            border-bottom: 2px solid #e9ecef;
+            position: sticky; top: 0; z-index: 2;
+        }
+        .matrix-table thead th:first-child {
+            text-align: left; min-width: 240px;
+        }
+        .matrix-table thead th:nth-child(2) {
+            text-align: left; min-width: 80px;
+        }
+        .matrix-table tbody td {
+            padding: 10px 14px; border-bottom: 1px solid #f0f0f0;
+            font-size: 14px; color: #333; text-align: center;
+        }
+        .matrix-table tbody td:first-child { text-align: left; }
+        .matrix-table tbody td:nth-child(2) {
+            text-align: left; font-size: 12px; color: #888;
+        }
+        .matrix-table tbody tr:hover { background: #f8f9ff; }
+        .matrix-table tbody tr:last-child td { border-bottom: none; }
+
+        .user-name-link {
+            text-decoration: none; color: #333;
+            font-weight: 500;
+        }
+        .user-name-link:hover { color: #667eea; }
+
+        /* Чекбоксы матрицы */
+        .matrix-cb {
+            width: 20px; height: 20px; cursor: pointer;
+            accent-color: #667eea;
+        }
+        .matrix-cb:disabled { cursor: default; opacity: 0.5; }
+
+        /* Подсветка изменённых */
+        .matrix-cell.changed { background: #fff8e1; }
+
+        /* Группировка по лабораториям */
+        .lab-group-header td {
+            background: #f0f2ff; font-weight: 600; font-size: 13px;
+            color: #4a5568; padding: 8px 14px !important;
+            border-bottom: 1px solid #d8ddf0 !important;
+        }
+
+        .toast {
+            position: fixed; bottom: 20px; right: 20px;
+            padding: 12px 20px; border-radius: 8px; color: #fff;
+            font-size: 14px; z-index: 2000;
+            opacity: 0; transition: opacity 0.3s; pointer-events: none;
+        }
+        .toast.success { background: #137333; }
+        .toast.error { background: #c5221f; }
+        .toast.active { opacity: 1; }
+
+        .empty-state {
+            padding: 60px; text-align: center; color: #999;
+        }
+        .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+
+        @media (max-width: 768px) {
+            .filters-bar { flex-direction: column; }
+            .filters-bar input { max-width: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="header">
+            <div class="header-top">
+                <h1>📊 Матрица ответственности</h1>
+                <div class="header-actions">
+                    <a href="{% url 'workspace_home' %}" class="back-link">← Рабочее пространство</a>
+                </div>
+            </div>
+            <div class="user-info">
+                {{ request.user.full_name }} ({{ request.user.get_role_display }})
+                · {{ total_users }} сотрудников
+                · {{ areas|length }} областей аккредитации
+            </div>
+        </div>
+
+        <!-- Фильтры -->
+        <form class="filters-bar" method="get">
+            <input type="text" name="search" value="{{ current_search }}"
+                   placeholder="🔍 Поиск по ФИО...">
+            <select name="lab_id" onchange="this.form.submit()">
+                <option value="">Все лаборатории</option>
+                {% for lab in laboratories %}
+                    <option value="{{ lab.id }}"
+                            {% if current_lab_id == lab.id|stringformat:"d" %}selected{% endif %}>
+                        {{ lab.code_display }} — {{ lab.name }}
+                    </option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn-search">Найти</button>
+            {% if current_search or current_lab_id %}
+                <a href="{% url 'responsibility_matrix' %}" class="btn-reset">✕ Сбросить</a>
+            {% endif %}
+        </form>
+
+        <!-- Матрица -->
+        <div class="matrix-card">
+            {% if can_edit %}
+            <div class="matrix-toolbar">
+                <div>
+                    <span class="matrix-toolbar-info">Чекбоксы: допуск сотрудника к области аккредитации</span>
+                    <span class="changes-counter" id="changesCounter"></span>
+                </div>
+                <button class="btn-save-matrix" id="btnSaveMatrix" onclick="saveMatrix()">
+                    💾 Сохранить изменения
+                </button>
+            </div>
+            {% endif %}
+
+            {% if matrix_rows %}
+            <div style="overflow-x: auto;">
+                <table class="matrix-table">
+                    <thead>
+                        <tr>
+                            <th>Сотрудник</th>
+                            <th>Лаб.</th>
+                            {% for area in areas %}
+                                <th>{{ area.name }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% regroup matrix_rows by user.laboratory as lab_groups %}
+                        {% for group in lab_groups %}
+                            <tr class="lab-group-header">
+                                <td colspan="{{ areas|length|add:2 }}">
+                                    {% if group.grouper %}
+                                        {{ group.grouper.code_display }} — {{ group.grouper.name }}
+                                    {% else %}
+                                        Без подразделения
+                                    {% endif %}
+                                    ({{ group.list|length }})
+                                </td>
+                            </tr>
+                            {% for row in group.list %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'employee_detail' row.user.pk %}" class="user-name-link">
+                                        {{ row.user.full_name }}
+                                    </a>
+                                </td>
+                                <td>{{ row.user.laboratory.code_display|default:"—" }}</td>
+                                {% for cell in row.areas %}
+                                <td class="matrix-cell" data-user="{{ row.user.pk }}" data-area="{{ cell.area_id }}">
+                                    <input type="checkbox"
+                                           class="matrix-cb"
+                                           data-user="{{ row.user.pk }}"
+                                           data-area="{{ cell.area_id }}"
+                                           {% if cell.checked %}checked{% endif %}
+                                           data-original="{% if cell.checked %}1{% else %}0{% endif %}"
+                                           {% if not can_edit %}disabled{% endif %}>
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="icon">👥</div>
+                <p>Сотрудники не найдены</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    const CSRF = '{{ csrf_token }}';
+    const pendingChanges = new Map(); // key = 'userId-areaId', value = { user_id, area_id, checked }
+
+    {% if can_edit %}
+    // Отслеживание изменений
+    document.querySelectorAll('.matrix-cb').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const userId = this.dataset.user;
+            const areaId = this.dataset.area;
+            const key = userId + '-' + areaId;
+            const original = this.dataset.original === '1';
+            const current = this.checked;
+
+            // Подсветка ячейки
+            const cell = this.closest('.matrix-cell');
+
+            if (current !== original) {
+                pendingChanges.set(key, {
+                    user_id: parseInt(userId),
+                    area_id: parseInt(areaId),
+                    checked: current,
+                });
+                cell.classList.add('changed');
+            } else {
+                pendingChanges.delete(key);
+                cell.classList.remove('changed');
+            }
+
+            updateSaveButton();
+        });
+    });
+
+    function updateSaveButton() {
+        const count = pendingChanges.size;
+        const btn = document.getElementById('btnSaveMatrix');
+        const counter = document.getElementById('changesCounter');
+
+        if (count > 0) {
+            btn.classList.add('has-changes');
+            counter.classList.add('has-changes');
+            counter.textContent = `· ${count} изменени${count === 1 ? 'е' : count < 5 ? 'я' : 'й'}`;
+        } else {
+            btn.classList.remove('has-changes');
+            counter.classList.remove('has-changes');
+        }
+    }
+
+    function saveMatrix() {
+        if (pendingChanges.size === 0) return;
+
+        const btn = document.getElementById('btnSaveMatrix');
+        btn.disabled = true;
+        btn.textContent = 'Сохранение...';
+
+        const changes = Array.from(pendingChanges.values());
+
+        fetch('{% url "api_save_matrix" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF,
+            },
+            body: JSON.stringify({ changes }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.textContent = '💾 Сохранить изменения';
+
+            if (data.error) {
+                showToast(data.error, 'error');
+                return;
+            }
+
+            // Обновляем original значения
+            document.querySelectorAll('.matrix-cb').forEach(cb => {
+                cb.dataset.original = cb.checked ? '1' : '0';
+            });
+            document.querySelectorAll('.matrix-cell.changed').forEach(cell => {
+                cell.classList.remove('changed');
+            });
+            pendingChanges.clear();
+            updateSaveButton();
+
+            const msg = `Сохранено: +${data.added} / −${data.removed}`;
+            showToast(msg, 'success');
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.textContent = '💾 Сохранить изменения';
+            showToast('Ошибка сохранения', 'error');
+        });
+    }
+
+    // Предупреждение при уходе с несохранёнными изменениями
+    window.addEventListener('beforeunload', function(e) {
+        if (pendingChanges.size > 0) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+    {% endif %}
+
+    function showToast(msg, type) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = `toast ${type} active`;
+        setTimeout(() => t.classList.remove('active'), 3000);
+    }
+    </script>
+</body>
+</html>

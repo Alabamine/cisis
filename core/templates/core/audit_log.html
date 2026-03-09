@@ -342,6 +342,8 @@
                     {% elif current_sort == 'entity_type' %}<span class="sort-arrow">▲</span>{% endif %}
                 </a>
             </th>
+            <th>Журнал</th>
+            </th>
             <th>Поле</th>
             <th>Было</th>
             <th>Стало</th>
@@ -363,7 +365,7 @@
             </td>
             <td>
                 <span class="badge badge-{{ entry.action }}">
-                    {{ entry.get_action_display }}
+                    {{ entry.action_display }}
                 </span>
             </td>
             <td>
@@ -371,12 +373,29 @@
                     <a href="{% url 'sample_detail' entry.entity_id %}"
                        class="entity-link"
                        title="Открыть образец #{{ entry.entity_id }}">
-                        Образец #{{ entry.entity_id }}
+                        {{ entry.entity_name|default:entry.entity_id }}
+                    </a>
+                {% elif entry.entity_type == 'standard' %}
+                    <a href="{% url 'standard_detail' entry.entity_id %}"
+                       class="entity-link"
+                       title="Открыть стандарт">
+                        {{ entry.entity_name|default:entry.entity_id }}
+                    </a>
+                {% elif entry.entity_type == 'USER' %}
+                    <a href="{% url 'employee_detail' entry.entity_id %}"
+                       class="entity-link"
+                       title="Открыть сотрудника">
+                        {{ entry.entity_name|default:entry.entity_id }}
                     </a>
                 {% else %}
-                    {{ entry.get_entity_type_display }}
-                    #{{ entry.entity_id }}
+                    {{ entry.entity_display }}
+                    {% if entry.entity_name %} · {{ entry.entity_name }}{% elif entry.entity_id %} #{{ entry.entity_id }}{% endif %}
                 {% endif %}
+                {% if entry.extra_info %}
+                    <br><span style="font-size: 11px; color: #888;">{{ entry.extra_info }}</span>
+                {% endif %}
+            </td>
+            <td style="font-size: 12px; color: #888;">{{ entry.journal_display|default:"—" }}</td>
             </td>
             <td>
                 {% if entry.field_display %}

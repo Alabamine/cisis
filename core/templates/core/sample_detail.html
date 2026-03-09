@@ -2921,7 +2921,132 @@
         };
     })();
 
+    <script>
+    // ⭐ v3.28.0: Проверка допуска операторов к областям аккредитации
+    (function() {
+        const form = document.getElementById('sample-form');
+        if (!form) return;
+
+        let skipCheck = false;
+        let pendingSubmitBtn = null;
+
+        function getHiddenIds(name) {
+            const ids = [];
+            const container = document.getElementById('m2m-hidden-' + name);
+            if (container) {
+                container.querySelectorAll('input[type="hidden"]').forEach(inp => {
+                    if (inp.value) ids.push(inp.value);
+                });
+            }
+            return ids;
+        }
+
+        form.addEventListener('submit', function(e) {
+            if (skipCheck) { skipCheck = false; return; }
+
+            const submitter = e.submitter;
+            const action = submitter ? submitter.value : '';
+
+            const checkActions = [
+                'save', 'start_conditioning', 'ready_for_test',
+                'start_testing', 'complete_test',
+                'draft_ready', 'results_uploaded',
+            ];
+            if (!checkActions.includes(action)) return;
+
+            const operatorIds = getHiddenIds('operators');
+            const standardIds = getHiddenIds('standards');
+            if (operatorIds.length === 0 || standardIds.length === 0) return;
+
+            e.preventDefault();
+            pendingSubmitBtn = submitter;
+
+            const params = new URLSearchParams({
+                operator_ids: operatorIds.join(','),
+                standard_ids: standardIds.join(','),
+            });
+
+            fetch('/api/check-operator-accreditation/?' + params)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.warnings && data.warnings.length > 0) {
+                        renderWarnings(data.warnings);
+                        document.getElementById('accreditationWarningModal').classList.add('active');
+                    } else {
+                        doSubmit();
+                    }
+                })
+                .catch(() => doSubmit());
+        });
+
+        function renderWarnings(warnings) {
+            const container = document.getElementById('accreditationWarnings');
+            let html = '';
+            warnings.forEach(w => {
+                html += '<div class="aw-item">' +
+                    '<div class="aw-name">' + w.operator_name + '</div>' +
+                    '<div class="aw-details">' + w.details.join('<br>') + '</div>' +
+                    '</div>';
+            });
+            container.innerHTML = html;
+        }
+
+        function doSubmit() {
+            skipCheck = true;
+            if (pendingSubmitBtn) pendingSubmitBtn.click();
+            else form.submit();
+        }
+
+        window.hideAccreditationModal = function() {
+            document.getElementById('accreditationWarningModal').classList.remove('active');
+            pendingSubmitBtn = null;
+        };
+
+        window.confirmSaveWithWarning = function() {
+            document.getElementById('accreditationWarningModal').classList.remove('active');
+            doSubmit();
+        };
+
+        document.getElementById('accreditationWarningModal').addEventListener('click', function(e) {
+            if (e.target === this) hideAccreditationModal();
+        });
+    })();
 </script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ШАГ 1: МОДАЛКА — вставить ПЕРЕД </script> </body> (после строки ~2922)
+     ═══════════════════════════════════════════════════════════ -->
+
+<!-- ⭐ v3.28.0: Модалка предупреждения о допуске -->
+<div class="modal-overlay" id="accreditationWarningModal">
+    <div class="modal" style="max-width: 520px;">
+        <h3 style="color: #856404; margin-bottom: 12px;">⚠️ Предупреждение о допуске</h3>
+        <p style="font-size: 13px; color: #666; margin-bottom: 12px;">
+            Следующие операторы не допущены к стандартам этого образца:
+        </p>
+        <div id="accreditationWarnings" style="max-height: 250px; overflow-y: auto; margin-bottom: 16px;"></div>
+        <p style="font-size: 13px; color: #856404; margin-bottom: 16px; padding: 10px; background: #fff3cd; border-radius: 6px; border: 1px solid #ffe082;">
+            Вы можете сохранить образец, но рекомендуется назначить допуски через
+            <a href="{% url 'responsibility_matrix' %}" style="color: #667eea;" target="_blank">матрицу ответственности</a>.
+        </p>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="btn" style="background: #6c757d; color: white;"
+                    onclick="hideAccreditationModal()">Отмена</button>
+            <button type="button" class="btn" style="background: #ffc107; color: #212529;"
+                    onclick="confirmSaveWithWarning()">Сохранить всё равно</button>
+        </div>
+    </div>
+</div>
+
+<style>
+#accreditationWarnings .aw-item {
+    padding: 8px 12px; margin-bottom: 6px;
+    background: #fff8e1; border: 1px solid #ffe082;
+    border-radius: 6px; font-size: 13px;
+}
+#accreditationWarnings .aw-name { font-weight: 600; color: #333; }
+#accreditationWarnings .aw-details { color: #856404; font-size: 12px; margin-top: 2px; }
+</style>
 
 </body>
 </html>
