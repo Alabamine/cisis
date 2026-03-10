@@ -305,6 +305,10 @@
         }
         .no-data p { font-size: 16px; margin-bottom: 8px; }
 
+        /* ═══════════════ EXPAND ON HOVER ═══════════════ */
+        .expand-cell {max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; position: relative; cursor: default; }
+        .expand-cell:hover { white-space: normal; overflow: visible; background: #fffde7; box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1; }
+
         /* ═══════════════════════ PAGINATION ═══════════════════════ */
         .pagination-bar {
             background: white; padding: 15px 20px;
@@ -458,7 +462,7 @@
                 <tr>
                     {% for column in visible_columns %}
                     <th data-col="{{ column.code }}"
-                        onclick="sortBy('{{ column.code }}')"
+                        onclick="if(!window._resized)sortBy('{{ column.code }}')"
                         class="{% if current_sort == column.code %}sorted{% endif %}">
                         <span class="th-label">{{ column.name }}</span>
                         <span class="sort-arrow">
@@ -494,7 +498,7 @@
                             </td>
 
                         {% elif column.code == 'name' %}
-                            <td title="{{ eq.name }}">{{ eq.name|truncatechars:50 }}</td>
+                            <td class="expand-cell" onclick="event.stopPropagation()">{{ eq.name }}</td>
 
                         {% elif column.code == 'inventory_number' %}
                             <td>{{ eq.inventory_number|default:"—" }}</td>
@@ -855,7 +859,7 @@
         if (!table) return;
         const headers = table.querySelectorAll('th');
         const tooltip = document.getElementById('resize-tooltip');
-        let resizing = null, startX = 0, startWidth = 0, saveTimeout = null;
+        let resizing = null, startX = 0, startWidth = 0, saveTimeout = null, didResize = false;
 
         headers.forEach(th => {
             const col = th.dataset.col;
@@ -866,7 +870,7 @@
             handle.addEventListener('mousedown', (e) => {
                 e.preventDefault(); e.stopPropagation();
                 const th = handle.closest('th');
-                resizing = th; startX = e.pageX; startWidth = th.offsetWidth;
+                resizing = th; startX = e.pageX; startWidth = th.offsetWidth; didResize = false;
                 handle.classList.add('active');
                 document.body.style.cursor = 'col-resize';
                 document.body.style.userSelect = 'none';
@@ -875,6 +879,7 @@
 
         document.addEventListener('mousemove', (e) => {
             if (!resizing) return;
+            didResize = true;
             const newWidth = Math.max(60, startWidth + (e.pageX - startX));
             resizing.style.width = newWidth + 'px';
             tooltip.style.display = 'block';
@@ -885,6 +890,7 @@
 
         document.addEventListener('mouseup', () => {
             if (!resizing) return;
+            window._resized = didResize; setTimeout(() => { window._resized = false; }, 50);
             const col = resizing.dataset.col;
             const width = resizing.offsetWidth;
             resizing.querySelector('.resize-handle')?.classList.remove('active');

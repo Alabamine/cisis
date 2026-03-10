@@ -103,6 +103,25 @@
         .no-data { padding: 60px 40px; text-align: center; color: #999; }
         .no-data p { font-size: 16px; margin-bottom: 8px; }
 
+        /* ═══════════════ NOTES CELL EXPAND ═══════════════ */
+        .notes-cell {
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #666;
+            position: relative;
+            cursor: default;
+            transition: background 0.2s;
+        }
+        .notes-cell:hover {
+            white-space: normal;
+            overflow: visible;
+            background: #fffde7;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 1;
+        }
+
         /* ═══════════════ PAGINATION ═══════════════ */
         .pagination-bar { background: white; padding: 12px 20px; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .pagination-info { font-size: 13px; color: #666; }
@@ -243,7 +262,7 @@
             <thead>
             <tr>
                 {% for column in visible_columns %}
-                <th data-col="{{ column.code }}" onclick="sortBy('{{ column.code }}')">
+                <th data-col="{{ column.code }}" onclick="if(!window._resized)sortBy('{{ column.code }}')">
                     <span>{{ column.name }}</span>
                     <span class="sort-arrow">
                         {% if current_sort == column.code %}▲{% elif current_sort == '-'|add:column.code %}▼{% else %}⇅{% endif %}
@@ -279,7 +298,7 @@
                             {% else %}<span class="badge badge-nodate">Не указана</span>{% endif %}
                         </td>
                     {% elif column.code == 'notes' %}
-                        <td title="{{ plan.notes|default:'' }}" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#666;">{{ plan.notes|default:"—" }}</td>
+                        <td class="notes-cell" onclick="event.stopPropagation()">{{ plan.notes|default:"—" }}</td>
                     {% else %}
                         <td>—</td>
                     {% endif %}
@@ -421,13 +440,13 @@
         if (!table) return;
         const headers = table.querySelectorAll('th');
         const tooltip = document.getElementById('resize-tooltip');
-        let resizing = null, startX = 0, startWidth = 0, saveTimeout = null;
+        let resizing = null, startX = 0, startWidth = 0, saveTimeout = null, didResize = false;
         headers.forEach(th => { const col = th.dataset.col; if (col && savedColumnWidths[col]) th.style.width = savedColumnWidths[col] + 'px'; });
         document.querySelectorAll('.resize-handle').forEach(handle => {
-            handle.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); const th = handle.closest('th'); resizing = th; startX = e.pageX; startWidth = th.offsetWidth; handle.classList.add('active'); document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; });
+            handle.addEventListener('mousedown', e => { e.preventDefault(); e.stopPropagation(); const th = handle.closest('th'); resizing = th; startX = e.pageX; startWidth = th.offsetWidth; didResize = false; handle.classList.add('active'); document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; });
         });
-        document.addEventListener('mousemove', e => { if (!resizing) return; const newWidth = Math.max(60, startWidth + (e.pageX - startX)); resizing.style.width = newWidth + 'px'; tooltip.style.display = 'block'; tooltip.style.left = e.pageX + 10 + 'px'; tooltip.style.top = e.pageY - 20 + 'px'; tooltip.textContent = newWidth + 'px'; });
-        document.addEventListener('mouseup', () => { if (!resizing) return; const col = resizing.dataset.col; const width = resizing.offsetWidth; resizing.querySelector('.resize-handle')?.classList.remove('active'); resizing = null; document.body.style.cursor = ''; document.body.style.userSelect = ''; tooltip.style.display = 'none'; if (col) { savedColumnWidths[col] = width; clearTimeout(saveTimeout); saveTimeout = setTimeout(() => { fetch('{% url "save_maintenance_column_widths" %}', { method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken}, body: JSON.stringify({widths: savedColumnWidths}) }).catch(err => console.error('Ошибка сохранения ширин:', err)); }, 500); } });
+        document.addEventListener('mousemove', e => { if (!resizing) return; didResize = true; const newWidth = Math.max(60, startWidth + (e.pageX - startX)); resizing.style.width = newWidth + 'px'; tooltip.style.display = 'block'; tooltip.style.left = e.pageX + 10 + 'px'; tooltip.style.top = e.pageY - 20 + 'px'; tooltip.textContent = newWidth + 'px'; });
+        document.addEventListener('mouseup', () => { if (!resizing) return; window._resized = didResize; setTimeout(() => { window._resized = false; }, 50); const col = resizing.dataset.col; const width = resizing.offsetWidth; resizing.querySelector('.resize-handle')?.classList.remove('active'); resizing = null; document.body.style.cursor = ''; document.body.style.userSelect = ''; tooltip.style.display = 'none'; if (col) { savedColumnWidths[col] = width; clearTimeout(saveTimeout); saveTimeout = setTimeout(() => { fetch('{% url "save_maintenance_column_widths" %}', { method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrfToken}, body: JSON.stringify({widths: savedColumnWidths}) }).catch(err => console.error('Ошибка сохранения ширин:', err)); }, 500); } });
     })();
 
     function changePerPage(value) {
