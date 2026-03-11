@@ -35,6 +35,9 @@
         .stat-verification { color: #1565c0; }
         .stat-attestation { color: #f57f17; }
         .stat-repair { color: #c62828; }
+        .stat-modification { color: #6a1b9a; }
+        .stat-calibration {color: #2e7d32;}
+        .stat-conservation {color: #00695c;}
         .stat-total { color: #4a90e2; }
 
         /* ═══════════════ MODAL ═══════════════ */
@@ -100,9 +103,12 @@
         .link-cell { color: #4a90e2; text-decoration: none; font-weight: 500; }
         .link-cell:hover { text-decoration: underline; }
         .maintenance-type { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 500; }
-        .mt-VERIFICATION { background: #e3f2fd; color: #1565c0; }
-        .mt-ATTESTATION { background: #fff8e1; color: #f57f17; }
-        .mt-REPAIR { background: #fce4ec; color: #c62828; }
+        .mt-VERIFICATION  { background: #e3f2fd; color: #1565c0; }
+        .mt-ATTESTATION   { background: #fff8e1; color: #f57f17; }
+        .mt-REPAIR        { background: #fce4ec; color: #c62828; }
+        .mt-MODIFICATION  { background: #f3e5f5; color: #6a1b9a; }
+        .mt-CALIBRATION   { background: #e8f5e9; color: #2e7d32; }
+        .mt-CONSERVATION  { background: #e0f7fa; color: #00695c; }
         .result-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 500; }
         .result-SUITABLE { background: #d4edda; color: #155724; }
         .result-UNSUITABLE { background: #f8d7da; color: #721c24; }
@@ -173,6 +179,9 @@
             <span>Поверки: <strong class="stat-verification">{{ stats.verification }}</strong></span>
             <span>Аттестации: <strong class="stat-attestation">{{ stats.attestation }}</strong></span>
             <span>Ремонты: <strong class="stat-repair">{{ stats.repair }}</strong></span>
+            <span>Модификации: <strong class="stat-modification">{{ stats.modification }}</strong></span>
+            <span>Калибровки: <strong class="stat-calibration">{{ stats.calibration }}</strong></span>
+            <span>Консервации: <strong class="stat-conservation">{{ stats.conservation }}</strong></span>
             <span>Всего: <strong class="stat-total">{{ stats.total }}</strong></span>
         </div>
     </div>

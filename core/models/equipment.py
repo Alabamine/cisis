@@ -31,6 +31,9 @@ class MaintenanceType(models.TextChoices):
     VERIFICATION = 'VERIFICATION', 'Поверка'
     ATTESTATION  = 'ATTESTATION',  'Аттестация'
     REPAIR       = 'REPAIR',       'Ремонт'
+    MODIFICATION = 'MODIFICATION', 'Модификация'
+    CALIBRATION  = 'CALIBRATION',  'Калибровка'
+    CONSERVATION = 'CONSERVATION', 'Консервация'
 
 
 class MaintenanceFrequencyUnit(models.TextChoices):

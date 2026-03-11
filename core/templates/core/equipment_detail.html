@@ -590,6 +590,10 @@
                         <input type="text" name="document_name" placeholder="Номер документа">
                     </div>
                     <div class="form-group form-group-full">
+                        <label>Причина проведения / описание повреждений или отказов</label>
+                        <textarea name="reason" rows="2" placeholder="Плановое ТО, истечение срока поверки, выход из строя, механическое повреждение…"></textarea>
+                    </div>
+                    <div class="form-group form-group-full">
                         <label>Описание</label>
                         <textarea name="description" rows="2" placeholder="Описание выполненных работ"></textarea>
                     </div>
@@ -640,7 +644,7 @@
             <thead><tr>
                 <th>Дата</th><th>Тип</th><th>Документ</th>
                 <th>Действительно до</th><th>Результат</th>
-                <th>Описание</th><th>Выполнил</th>
+                <th>Причина</th><th>Описание</th><th>Выполнил</th>
             </tr></thead>
             <tbody>
                 {% for m in maintenance_history %}
@@ -657,7 +661,8 @@
                         {% elif m.verification_result == 'UNSUITABLE' %}<span style="color:#721c24;font-weight:500;">✗ Непригоден</span>
                         {% else %}—{% endif %}
                     </td>
-                    <td title="{{ m.description }}">{{ m.description|truncatechars:40|default:"—" }}
+                    <td title="{{ m.reason }}">{{ m.reason|truncatechars:40|default:"—" }}</td>
+                    <td title="{{ m.description }}\">{{ m.description|truncatechars:40|default:"—" }}
                         {% if m.verification_organization %}<br><small style="color:#666;">{{ m.verification_organization }}</small>{% endif %}
                     </td>
                     <td>{% if m.performed_by %}{{ m.performed_by.full_name }}{% else %}—{% endif %}</td>
