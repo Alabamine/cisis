@@ -667,6 +667,7 @@ def equipment_edit(request, equipment_id):
             eq.notes = request.POST.get('notes', '').strip()
 
             try:
+                eq_before = Equipment.objects.get(pk=eq.pk)
                 eq.save()
 
                 # Обновляем области аккредитации (M2M)
@@ -695,10 +696,29 @@ def equipment_edit(request, equipment_id):
                 # Аудит
                 try:
                     from core.views.audit import log_action
-                    log_action(
-                        request, 'EQUIPMENT', eq.pk, 'EQUIPMENT_EDIT',
-                        extra_data={'equipment': f'{eq.accounting_number} — {eq.name}'}
-                    )
+                    extra = {'equipment': f'{eq.accounting_number} — {eq.name}'}
+                    TRACKED = [
+                        ('name',               'Наименование'),
+                        ('accounting_number',  'Учётный номер'),
+                        ('factory_number',     'Заводской номер'),
+                        ('inventory_number',   'Инвентарный номер'),
+                        ('manufacturer',       'Производитель'),
+                        ('equipment_type',     'Тип'),
+                        ('status',             'Статус'),
+                        ('metrology_interval', 'Межповерочный интервал'),
+                        ('notes',              'Примечания'),
+                    ]
+                    for field, label in TRACKED:
+                        old = str(getattr(eq_before, field) or '')
+                        new = str(getattr(eq, field) or '')
+                        if old != new:
+                            log_action(
+                                request, 'EQUIPMENT', eq.pk, 'EQUIPMENT_EDIT',
+                                field_name=field,
+                                old_value=old,
+                                new_value=new,
+                                extra_data=extra,
+                            )
                 except Exception:
                     pass
 

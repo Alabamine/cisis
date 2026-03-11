@@ -50,6 +50,7 @@ ENTITY_TYPE_LABELS = {
     'contact': 'Контакт',
     'file': 'Файл',
     'maintenance': 'Техобслуживание',
+    'EQUIPMENT': 'Оборудование',
 }
 
 # Маппинг entity_type → название журнала (секции системы)
@@ -67,6 +68,7 @@ JOURNAL_LABELS = {
     'file': 'Файлы',
     'maintenance': 'Техобслуживание',
     'user': 'Пользователи',
+    'EQUIPMENT': 'Реестр оборудования',
 }
 
 # Человекочитаемые названия действий
@@ -95,6 +97,11 @@ ACTION_LABELS = {
     'EMPLOYEE_RESET_PASSWORD': 'Сброс пароля',
     'EMPLOYEE_AREAS_CHANGED': 'Изменение областей аккредитации',
     'MATRIX_BULK_UPDATE': 'Массовое изменение допусков',
+    'EQUIPMENT_EDIT':    'Редактирование оборудования',
+    'MAINTENANCE_ADDED': 'Добавление записи обслуживания',
+    'PLAN_ADDED':        'Добавление плана ТО',
+    'PLAN_EDITED':       'Редактирование плана ТО',
+    'PLAN_DEACTIVATED':  'Деактивация плана ТО',
 }
 
 
@@ -442,6 +449,8 @@ def _resolve_entity_name(entity_type, entity_id, extra_data=None):
         # code для стандартов
         if entity_type == 'standard' and 'code' in extra_data:
             return extra_data['code']
+        if entity_type in ('equipment', 'EQUIPMENT') and 'equipment' in extra_data:
+            return extra_data['equipment']
 
     # Резолвим из БД
     if entity_type == 'sample':
@@ -525,6 +534,17 @@ def _enrich_entries(entries):
         entry.entity_name = _resolve_entity_name(
             entry.entity_type, entry.entity_id, entry.extra_data
         )
+         # Для оборудования — разбиваем на учётный номер и наименование
+        if entry.entity_type in ('equipment', 'EQUIPMENT'):
+            raw = entry.entity_name or (
+                entry.extra_data.get('equipment', '') if isinstance(entry.extra_data, dict) else ''
+            )
+            parts = raw.split(' — ', 1) if raw else []
+            entry.entity_acc     = parts[0].strip() if parts else ''
+            entry.entity_eq_name = parts[1].strip() if len(parts) > 1 else ''
+        else:
+            entry.entity_acc     = ''
+            entry.entity_eq_name = ''
 
         # ⭐ v3.28.0: Доп. информация из extra_data
         extra_info = ''

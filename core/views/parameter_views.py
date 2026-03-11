@@ -284,18 +284,24 @@ def api_standard_save(request):
         return JsonResponse({'error': 'Код стандарта обязателен'}, status=400)
 
     if standard_id:
-        # Редактирование
-        standard = get_object_or_404(Standard, id=standard_id)
-        action = 'standard_updated'
+            # Редактирование — сохраняем старые значения ДО изменений
+            standard = get_object_or_404(Standard, id=standard_id)
+            action = 'standard_updated'
+            before = {
+                'code':      standard.code,
+                'name':      standard.name,
+                'test_type': standard.test_type,
+                'test_code': standard.test_code,
+            }
     else:
-        # Проверка уникальности кода
         if Standard.objects.filter(code=code).exists():
             return JsonResponse({'error': f'Стандарт с кодом «{code}» уже существует'}, status=400)
         standard = Standard()
         action = 'standard_created'
+        before = {}
 
-    standard.code = code
-    standard.name = data.get('name', '').strip() or None
+    standard.code      = code
+    standard.name      = data.get('name', '').strip() or None
     standard.test_type = data.get('test_type', '').strip() or None
     standard.test_code = data.get('test_code', '').strip() or None
     standard.save()
@@ -331,13 +337,30 @@ def api_standard_save(request):
         except ImportError:
             pass
 
-    log_action(
-        request,
-        entity_type='standard',
-        entity_id=standard.id,
-        action=action,
-        extra_data={'code': standard.code, 'name': standard.name},
-    )
+    # стало:
+    from core.views.audit import log_field_changes
+    extra = {'code': standard.code, 'name': standard.name}
+    if action == 'standard_updated' and before:
+        TRACKED = [
+            ('code',      'Код стандарта'),
+            ('name',      'Наименование'),
+            ('test_type', 'Тип испытания'),
+            ('test_code', 'Код испытания'),
+        ]
+        changes = {}
+        for field, label in TRACKED:
+            old = str(before.get(field) or '')
+            new = str(getattr(standard, field) or '')
+            if old != new:
+                changes[field] = (old, new)
+        if changes:
+            log_field_changes(request, 'standard', standard.id, changes, extra_data=extra)
+        else:
+            log_action(request, entity_type='standard', entity_id=standard.id,
+                       action=action, extra_data=extra)
+    else:
+        log_action(request, entity_type='standard', entity_id=standard.id,
+                   action=action, extra_data=extra)
 
     return JsonResponse({
         'success': True,

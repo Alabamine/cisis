@@ -159,15 +159,4 @@ def log_m2m_changes(
             extra_data={'removed_ids': sorted(removed)},
         )
 
-def log_field_changes(request, entity_type, entity_id, changes):
-    """
-    Логирует изменения полей.
-    changes: dict {field_name: (old_value, new_value)}
-    """
-    for field_name, (old_val, new_val) in changes.items():
-        log_action(
-            request, entity_type, entity_id, 'update',
-            field_name=field_name,
-            old_value=old_val,
-            new_value=new_val,
-        )
+
