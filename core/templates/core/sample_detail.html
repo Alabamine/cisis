@@ -2583,8 +2583,8 @@
                         <span class="block-unfreeze-icon unfrozen" title="Блок разморожен (до перезагрузки)">🔓</span>
                     {% elif can_unfreeze_registration %}
                         <span class="block-unfreeze-icon clickable"
-                              title="Нажмите для разморозки блока регистрации"
-                              onclick="unfreezeRegistration({{ sample.id }})">🔒</span>
+                            title="Нажмите для разморозки блока регистрации"
+                            onclick="unfreezeRegistration('{{ sample.id|escapejs }}')">🔒</span>
                     {% elif sample.status != 'PENDING_VERIFICATION' %}
                         <span class="block-unfreeze-icon" title="Блок заморожен">🔒</span>
                     {% endif %}
@@ -3082,7 +3082,7 @@
         };
     })();
 
-    <script>
+    //<script>
     // ⭐ v3.28.0: Проверка допуска операторов к областям аккредитации
     (function() {
         const form = document.getElementById('sample-form');
