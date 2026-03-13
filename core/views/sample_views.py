@@ -127,7 +127,7 @@ def _handle_status_change(request, sample, action):
         sample.manufacturing_completion_date = now
         sample.save()
         # ⭐ v3.14.0: аудит
-        log_action(request, 'sample', sample.id, 'status_change',
+        log_action(request, 'sample', sample.id, 'sample_status_change',
                    field_name='status', old_value=old_status, new_value=sample.status)
         if sample.further_movement == 'TO_CLIENT_DEPT':
             messages.success(
@@ -159,7 +159,7 @@ def _handle_status_change(request, sample, action):
             messages.success(request, f'Образец принят в лабораторию в {now_local_str}')
         sample.save()
         # ⭐ v3.14.0: аудит
-        log_action(request, 'sample', sample.id, 'status_change',
+        log_action(request, 'sample', sample.id, 'sample_status_change',
                    field_name='status', old_value=old_status, new_value=sample.status)
 
         # ⭐ v3.15.0: Автопереход в MOISTURE_CONDITIONING после приёма из мастерской
@@ -169,7 +169,7 @@ def _handle_status_change(request, sample, action):
             prev_status = sample.status
             sample.status = SampleStatus.MOISTURE_CONDITIONING
             sample.save()
-            log_action(request, 'sample', sample.id, 'status_change',
+            log_action(request, 'sample', sample.id, 'sample_status_change',
                        field_name='status', old_value=prev_status,
                        new_value='MOISTURE_CONDITIONING')
             messages.info(
@@ -186,7 +186,7 @@ def _handle_status_change(request, sample, action):
             return redirect('sample_detail', sample_id=sample.id)
         sample.status = SampleStatus.REGISTERED
         sample.save()
-        log_action(request, 'sample', sample.id, 'status_change',
+        log_action(request, 'sample', sample.id, 'sample_status_change',
                    field_name='status', old_value=old_status, new_value=sample.status)
         messages.success(request, f'Образец принят из влагонасыщения в {now_local_str}')
         return redirect('sample_detail', sample_id=sample.id)
@@ -195,7 +195,7 @@ def _handle_status_change(request, sample, action):
         sample.status = SampleStatus.COMPLETED
         sample.save()
         # ⭐ v3.14.0: аудит
-        log_action(request, 'sample', sample.id, 'status_change',
+        log_action(request, 'sample', sample.id, 'sample_status_change',
                    field_name='status', old_value=old_status, new_value=sample.status)
         messages.success(request, 'Нарезка завершена. Образец готов к выдаче заказчику.')
         return redirect('sample_detail', sample_id=sample.id)
@@ -280,31 +280,31 @@ def _handle_status_change(request, sample, action):
     sample.save()
 
     # ⭐ v3.14.0: аудит (для всех веток, которые доходят до этого save)
-    log_action(request, 'sample', sample.id, 'status_change',
+    log_action(request, 'sample', sample.id, 'sample_status_change',
                field_name='status', old_value=old_status, new_value=sample.status)
 
     # ⭐ v3.16.0: аудит автозаполненных datetime-полей
     if action == 'start_conditioning':
-        log_action(request, 'sample', sample.id, 'update',
+        log_action(request, 'sample', sample.id, 'sample_updated',
                    field_name='conditioning_start_datetime',
                    old_value=old_cond_start, new_value=now)
     elif action == 'ready_for_test':
-        log_action(request, 'sample', sample.id, 'update',
+        log_action(request, 'sample', sample.id, 'sample_updated',
                    field_name='conditioning_end_datetime',
                    old_value=old_cond_end, new_value=now)
     elif action == 'start_testing':
-        log_action(request, 'sample', sample.id, 'update',
+        log_action(request, 'sample', sample.id, 'sample_updated',
                    field_name='testing_start_datetime',
                    old_value=old_test_start, new_value=now)
     elif action == 'complete_test':
-        log_action(request, 'sample', sample.id, 'update',
+        log_action(request, 'sample', sample.id, 'sample_updated',
                    field_name='testing_end_datetime',
                    old_value=old_test_end, new_value=now)
     elif action in ('draft_ready', 'results_uploaded'):
-        log_action(request, 'sample', sample.id, 'update',
+        log_action(request, 'sample', sample.id, 'sample_updated',
                    field_name='report_prepared_date',
                    old_value=old_report_date, new_value=now)
-        log_action(request, 'sample', sample.id, 'update',
+        log_action(request, 'sample', sample.id, 'sample_updated',
                    field_name='report_prepared_by',
                    old_value=old_report_by, new_value=request.user.id)
 
@@ -832,7 +832,7 @@ def sample_create(request):
                             sample.pi_number = sample.generate_pi_number()
                         sample.save()
 
-                log_action(request, 'sample', sample.id, 'create', extra_data={
+                log_action(request, 'sample', sample.id, 'sample_created', extra_data={
                     'cipher': sample.cipher,
                 })
 
@@ -1081,7 +1081,7 @@ def sample_detail(request, sample_id):
                 and moisture_sample.status in MOISTURE_DONE_STATUSES):
             sample.status = 'MOISTURE_READY'
             sample.save(update_fields=['status', 'updated_at'])
-            log_action(request, 'sample', sample.id, 'status_change',
+            log_action(request, 'sample', sample.id, 'sample_status_change',
                        field_name='status',
                        old_value='MOISTURE_CONDITIONING',
                        new_value='MOISTURE_READY')

@@ -82,6 +82,7 @@ def log_field_changes(
     entity_id: int,
     changes: dict,
     extra_data: dict = None,
+    action: str = None,
 ):
     """
     Записывает пакет изменений полей за одно сохранение.
@@ -91,19 +92,24 @@ def log_field_changes(
         'status': ('REGISTERED', 'IN_TESTING'),
         'temperature': (None, '23.5'),
     }
+
+    action — явное действие для записи в аудит.
+            Если не задано: 'status_change' для поля status, иначе 'update'.
     """
     for field, (old_val, new_val) in changes.items():
         # Определяем тип действия
-        if field == 'status':
-            action = 'status_change'
+        if action:
+            resolved_action = action
+        elif field == 'status':
+            resolved_action = 'status_change'
         else:
-            action = 'update'
+            resolved_action = 'update'
 
         log_action(
             request=request,
             entity_type=entity_type,
             entity_id=entity_id,
-            action=action,
+            action=resolved_action,
             field_name=field,
             old_value=old_val,
             new_value=new_val,
@@ -158,5 +164,3 @@ def log_m2m_changes(
             old_value=', '.join(_label(i) for i in sorted(removed)),
             extra_data={'removed_ids': sorted(removed)},
         )
-
-

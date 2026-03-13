@@ -51,6 +51,25 @@ ENTITY_TYPE_LABELS = {
     'file': 'Файл',
     'maintenance': 'Техобслуживание',
     'EQUIPMENT': 'Оборудование',
+    # UPPERCASE варианты (file_views пишет entity_type.upper())
+    'SAMPLE': 'Образец',
+    'STANDARD': 'Стандарт',
+    'ACCEPTANCE_ACT': 'Акт приёма-передачи',
+    'CONTRACT': 'Договор',
+    'CLIENT': 'Заказчик',
+    'FILE': 'Файл',
+}
+
+# Нормализация entity_type: UPPERCASE из file_views → каноническая форма
+# (file_views.py пишет entity_type.upper(), поэтому 'SAMPLE', 'STANDARD' и т.д.)
+ENTITY_TYPE_NORMALIZE = {
+    'SAMPLE': 'sample',
+    'STANDARD': 'standard',
+    'ACCEPTANCE_ACT': 'acceptance_act',
+    'CONTRACT': 'contract',
+    'CLIENT': 'client',
+    'FILE': 'file',
+    # 'EQUIPMENT' и 'USER' НЕ нормализуем — у них своя логика
 }
 
 # Маппинг entity_type → название журнала (секции системы)
@@ -69,39 +88,70 @@ JOURNAL_LABELS = {
     'maintenance': 'Техобслуживание',
     'user': 'Пользователи',
     'EQUIPMENT': 'Реестр оборудования',
+    # UPPERCASE варианты (file_views пишет entity_type.upper())
+    'SAMPLE': 'Журнал образцов',
+    'STANDARD': 'Справочник стандартов',
+    'ACCEPTANCE_ACT': 'Акты приёма-передачи',
+    'CONTRACT': 'Справочник заказчиков',
+    'CLIENT': 'Справочник заказчиков',
+    'FILE': 'Файлы',
 }
 
 # Человекочитаемые названия действий
 ACTION_LABELS = {
+    # ── Общие (для сущностей без специфичных меток) ──
     'create': 'Создание',
-    'created': 'Создание',
     'update': 'Изменение',
-    'status_change': 'Смена статуса',
     'delete': 'Удаление',
+    'status_change': 'Смена статуса',
     'm2m_add': 'Добавление связи',
     'm2m_remove': 'Удаление связи',
     'view': 'Просмотр',
+
+    # ── Образцы ──
+    'sample_created': 'Создание образца',
+    'sample_updated': 'Изменение образца',
+    'sample_status_change': 'Смена статуса образца',
+
+    # ── Стандарты ──
     'standard_created': 'Создание стандарта',
     'standard_updated': 'Изменение стандарта',
     'standard_activated': 'Активация стандарта',
     'standard_deactivated': 'Деактивация стандарта',
+
+    # ── Показатели ──
     'parameter_added': 'Добавление показателя',
     'parameter_updated': 'Изменение показателя',
     'parameter_removed': 'Удаление показателя',
+    'created': 'Создание',  # используется в api_parameter_create
+
+    # ── Допуск к стандартам ──
     'user_excluded_from_standard': 'Исключение из допуска',
     'user_included_to_standard': 'Возврат допуска',
+
+    # ── Сотрудники ──
     'EMPLOYEE_ADD': 'Добавление сотрудника',
     'EMPLOYEE_EDIT': 'Изменение сотрудника',
     'EMPLOYEE_DEACTIVATE': 'Деактивация сотрудника',
     'EMPLOYEE_ACTIVATE': 'Активация сотрудника',
     'EMPLOYEE_RESET_PASSWORD': 'Сброс пароля',
     'EMPLOYEE_AREAS_CHANGED': 'Изменение областей аккредитации',
+
+    # ── Матрица ответственности ──
     'MATRIX_BULK_UPDATE': 'Массовое изменение допусков',
+
+    # ── Оборудование / ТО ──
     'EQUIPMENT_EDIT':    'Редактирование оборудования',
     'MAINTENANCE_ADDED': 'Добавление записи обслуживания',
     'PLAN_ADDED':        'Добавление плана ТО',
     'PLAN_EDITED':       'Редактирование плана ТО',
     'PLAN_DEACTIVATED':  'Деактивация плана ТО',
+
+    # ── Файлы ──
+    'FILE_UPLOAD':   'Загрузка файла',
+    'FILE_DOWNLOAD': 'Скачивание файла',
+    'FILE_DELETE':   'Удаление файла',
+    'FILE_REPLACE':  'Замена файла',
 }
 
 
@@ -111,6 +161,17 @@ ACTION_LABELS = {
 
 # Кэш: field_code → display_name (из journal_columns)
 _field_name_cache = None
+
+# Человекочитаемые названия полей, отсутствующих в journal_columns
+EXTRA_FIELD_LABELS = {
+    # Стандарты
+    'code': 'Код стандарта',
+    'name': 'Наименование',
+    'test_type': 'Тип испытания',
+    'test_code': 'Код испытания',
+    'laboratory_ids': 'Лаборатории',
+    'area_ids': 'Области аккредитации',
+}
 
 
 def _get_field_name_map():
@@ -129,8 +190,13 @@ def _resolve_field_display(field_code):
     """Преобразует код поля в человекочитаемое название."""
     if not field_code:
         return None
+    # Сначала ищем в journal_columns
     name_map = _get_field_name_map()
-    return name_map.get(field_code, field_code)
+    result = name_map.get(field_code)
+    if result:
+        return result
+    # Затем в дополнительном словаре
+    return EXTRA_FIELD_LABELS.get(field_code, field_code)
 
 
 # Словари choices для быстрого поиска
@@ -474,7 +540,7 @@ def _resolve_entity_name(entity_type, entity_id, extra_data=None):
     if entity_type in ('USER', 'user'):
         return _resolve_user(eid)
 
-    if entity_type == 'equipment':
+    if entity_type in ('equipment', 'EQUIPMENT'):
         return _resolve_equipment(eid)
 
     if entity_type == 'acceptance_act':
@@ -523,19 +589,22 @@ def _enrich_entries(entries):
     - extra_info: доп. информация из extra_data ⭐ v3.28.0
     """
     for entry in entries:
+        # Нормализуем entity_type (file_views пишет UPPERCASE)
+        normalized_type = ENTITY_TYPE_NORMALIZE.get(entry.entity_type, entry.entity_type)
+
         entry.field_display = _resolve_field_display(entry.field_name)
         entry.old_display = _resolve_value(entry.field_name, entry.old_value)
         entry.new_display = _resolve_value(entry.field_name, entry.new_value)
 
         # ⭐ v3.28.0: Человекочитаемые поля
         entry.action_display = ACTION_LABELS.get(entry.action, entry.action)
-        entry.entity_display = ENTITY_TYPE_LABELS.get(entry.entity_type, entry.entity_type)
-        entry.journal_display = JOURNAL_LABELS.get(entry.entity_type, '')
+        entry.entity_display = ENTITY_TYPE_LABELS.get(normalized_type, ENTITY_TYPE_LABELS.get(entry.entity_type, entry.entity_type))
+        entry.journal_display = JOURNAL_LABELS.get(normalized_type, JOURNAL_LABELS.get(entry.entity_type, ''))
         entry.entity_name = _resolve_entity_name(
-            entry.entity_type, entry.entity_id, entry.extra_data
+            normalized_type, entry.entity_id, entry.extra_data
         )
          # Для оборудования — разбиваем на учётный номер и наименование
-        if entry.entity_type in ('equipment', 'EQUIPMENT'):
+        if normalized_type in ('equipment',) or entry.entity_type == 'EQUIPMENT':
             raw = entry.entity_name or (
                 entry.extra_data.get('equipment', '') if isinstance(entry.extra_data, dict) else ''
             )
@@ -636,7 +705,16 @@ def audit_log_view(request):
     search = request.GET.get('search', '')
 
     if entity_type:
-        queryset = queryset.filter(entity_type=entity_type)
+        # Ищем все варианты написания (lowercase + UPPERCASE из file_views)
+        et_variants = {entity_type}
+        # Если выбран канонический вариант — добавляем UPPERCASE
+        for upper_key, canonical in ENTITY_TYPE_NORMALIZE.items():
+            if canonical == entity_type:
+                et_variants.add(upper_key)
+        # Если выбран UPPERCASE — добавляем канонический
+        if entity_type in ENTITY_TYPE_NORMALIZE:
+            et_variants.add(ENTITY_TYPE_NORMALIZE[entity_type])
+        queryset = queryset.filter(entity_type__in=et_variants)
     if entity_id:
         queryset = queryset.filter(entity_id=int(entity_id))
     if action:
@@ -695,6 +773,14 @@ def audit_log_view(request):
         .order_by('entity_type')
     )
 
+    # Объединяем UPPERCASE-варианты с каноническими (SAMPLE → sample и т.д.)
+    seen_canonical = {}
+    for et in active_entity_types:
+        canonical = ENTITY_TYPE_NORMALIZE.get(et, et)
+        if canonical not in seen_canonical:
+            seen_canonical[canonical] = ENTITY_TYPE_LABELS.get(canonical, ENTITY_TYPE_LABELS.get(et, et))
+    deduped_entity_types = sorted(seen_canonical.items(), key=lambda x: x[1])
+
     active_actions = (
         AuditLog.objects.values_list('action', flat=True)
         .distinct()
@@ -747,10 +833,7 @@ def audit_log_view(request):
         'sort_link_params': sort_link_params,
         # Данные для выпадающих списков
         'filter_users': filter_users,
-        'entity_type_choices': [
-            (et, ENTITY_TYPE_LABELS.get(et, et))
-            for et in active_entity_types
-        ],
+        'entity_type_choices': deduped_entity_types,
         'action_choices': [
             (a, ACTION_LABELS.get(a, a))
             for a in active_actions

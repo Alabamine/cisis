@@ -399,7 +399,10 @@ def save_sample_fields(request, sample):
 
     # ⭐ v3.14.0: Логируем изменения обычных полей
     if audit_old_values:
-        log_field_changes(request, 'sample', sample.id, audit_old_values)
+        log_field_changes(
+            request, 'sample', sample.id, audit_old_values,
+            action='sample_updated',
+        )
 
     # Обрабатываем M2M-поля через промежуточные таблицы (после save)
     for field_code, column_name, selected_ids in m2m_updates:

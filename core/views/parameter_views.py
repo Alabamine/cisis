@@ -293,12 +293,27 @@ def api_standard_save(request):
                 'test_type': standard.test_type,
                 'test_code': standard.test_code,
             }
+            # Запоминаем старые M2M ДО изменений
+            from core.models.base import StandardLaboratory, StandardAccreditationArea
+            old_lab_ids = set(
+                StandardLaboratory.objects.filter(standard=standard)
+                .values_list('laboratory_id', flat=True)
+            )
+            try:
+                old_area_ids = set(
+                    StandardAccreditationArea.objects.filter(standard=standard)
+                    .values_list('accreditation_area_id', flat=True)
+                )
+            except Exception:
+                old_area_ids = set()
     else:
         if Standard.objects.filter(code=code).exists():
             return JsonResponse({'error': f'Стандарт с кодом «{code}» уже существует'}, status=400)
         standard = Standard()
         action = 'standard_created'
         before = {}
+        old_lab_ids = set()
+        old_area_ids = set()
 
     standard.code      = code
     standard.name      = data.get('name', '').strip() or None
@@ -337,7 +352,42 @@ def api_standard_save(request):
         except ImportError:
             pass
 
-    # стало:
+    # ── Аудит M2M-изменений ──
+    new_lab_ids = set(int(x) for x in (lab_ids or []) if x)
+    new_area_ids = set(int(x) for x in (area_ids or []) if x)
+
+    m2m_changes = {}
+
+    if old_lab_ids != new_lab_ids:
+        # Резолвим названия лабораторий
+        all_lab_ids = old_lab_ids | new_lab_ids
+        if all_lab_ids:
+            lab_names = dict(
+                Laboratory.objects.filter(id__in=all_lab_ids)
+                .values_list('id', 'code_display')
+            )
+        else:
+            lab_names = {}
+        old_lab_display = ', '.join(sorted(lab_names.get(i, str(i)) for i in old_lab_ids)) or '—'
+        new_lab_display = ', '.join(sorted(lab_names.get(i, str(i)) for i in new_lab_ids)) or '—'
+        m2m_changes['laboratory_ids'] = (old_lab_display, new_lab_display)
+
+    if old_area_ids != new_area_ids:
+        # Резолвим названия областей аккредитации
+        all_area_ids_set = old_area_ids | new_area_ids
+        if all_area_ids_set:
+            from core.models.base import AccreditationArea
+            area_names = dict(
+                AccreditationArea.objects.filter(id__in=all_area_ids_set)
+                .values_list('id', 'name')
+            )
+        else:
+            area_names = {}
+        old_area_display = ', '.join(sorted(area_names.get(i, str(i)) for i in old_area_ids)) or '—'
+        new_area_display = ', '.join(sorted(area_names.get(i, str(i)) for i in new_area_ids)) or '—'
+        m2m_changes['area_ids'] = (old_area_display, new_area_display)
+
+    # ── Аудит обычных полей + M2M ──
     from core.views.audit import log_field_changes
     extra = {'code': standard.code, 'name': standard.name}
     if action == 'standard_updated' and before:
@@ -353,8 +403,15 @@ def api_standard_save(request):
             new = str(getattr(standard, field) or '')
             if old != new:
                 changes[field] = (old, new)
+
+        # Добавляем M2M-изменения в общий пакет
+        changes.update(m2m_changes)
+
         if changes:
-            log_field_changes(request, 'standard', standard.id, changes, extra_data=extra)
+            log_field_changes(
+                request, 'standard', standard.id, changes,
+                extra_data=extra, action='standard_updated',
+            )
         else:
             log_action(request, entity_type='standard', entity_id=standard.id,
                        action=action, extra_data=extra)
@@ -754,4 +811,3 @@ def api_standard_toggle_exclusion(request):
     )
 
     return JsonResponse({'success': True, 'message': msg})
-
